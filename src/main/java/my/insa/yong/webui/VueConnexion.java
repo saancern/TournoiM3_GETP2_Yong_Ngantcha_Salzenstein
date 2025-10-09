@@ -39,6 +39,7 @@ public class VueConnexion extends VerticalLayout {
         this.setAlignItems(Alignment.CENTER);
         this.setJustifyContentMode(JustifyContentMode.CENTER);
         this.setSizeFull();
+        this.addClassName("app-container");
 
         construireInterface();
         configurerEvenements();
@@ -47,45 +48,43 @@ public class VueConnexion extends VerticalLayout {
     private void construireInterface() {
         // Titre principal
         H1 titre = new H1("Connexion / Inscription");
-        titre.getStyle().set("color", "#2c3e50");
+        titre.addClassName("page-title");
 
         // Sous-titre
         H3 sousTitre = new H3("Veuillez saisir vos informations");
-        sousTitre.getStyle().set("color", "#7f8c8d");
+        sousTitre.addClassName("page-subtitle");
 
         // Champs de saisie
         champSurnom = new TextField("Nom d'utilisateur");
         champSurnom.setPlaceholder("Saisissez votre nom d'utilisateur");
         champSurnom.setRequiredIndicatorVisible(true);
-        champSurnom.setWidth("300px");
+        champSurnom.addClassName("form-field");
 
         champMotDePasse = new PasswordField("Mot de passe");
         champMotDePasse.setPlaceholder("Saisissez votre mot de passe");
         champMotDePasse.setRequiredIndicatorVisible(true);
-        champMotDePasse.setWidth("300px");
+        champMotDePasse.addClassName("form-field");
 
         // Boutons
         boutonConnexion = new Button("Se connecter");
         boutonConnexion.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        boutonConnexion.setWidth("140px");
+        boutonConnexion.addClassName("btn-primary");
 
         boutonInscription = new Button("S'inscrire");
         boutonInscription.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
-        boutonInscription.setWidth("140px");
+        boutonInscription.addClassName("btn-success");
 
         // Layout des boutons
         HorizontalLayout layoutBoutons = new HorizontalLayout(boutonConnexion, boutonInscription);
-        layoutBoutons.setSpacing(true);
+        layoutBoutons.addClassName("button-group");
 
         // Container principal
         VerticalLayout formulaire = new VerticalLayout();
         formulaire.setAlignItems(Alignment.CENTER);
         formulaire.setSpacing(true);
         formulaire.setPadding(true);
-        formulaire.getStyle().set("border", "1px solid #ddd");
-        formulaire.getStyle().set("border-radius", "8px");
-        formulaire.getStyle().set("background-color", "#fafafa");
-        formulaire.setWidth("400px");
+        formulaire.addClassName("form-container");
+        formulaire.addClassName("fade-in");
 
         formulaire.add(titre, sousTitre, champSurnom, champMotDePasse, layoutBoutons);
 

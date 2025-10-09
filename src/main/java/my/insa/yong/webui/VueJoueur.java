@@ -27,37 +27,45 @@ public class VueJoueur extends VerticalLayout {
     private Button ajouterButton;
 
     public VueJoueur() {
-        setAlignItems(Alignment.CENTER);
-        setSpacing(true);
-        setPadding(true);
+        this.addClassName("app-container");
+        this.addClassName("centered-layout");
         setSizeFull();
 
+        // Container principal
+        VerticalLayout container = new VerticalLayout();
+        container.addClassName("form-container");
+        container.addClassName("fade-in");
+        container.setAlignItems(Alignment.CENTER);
+        container.setSpacing(true);
+        container.setPadding(true);
+
         H2 titre = new H2("Ajouter un joueur");
-        titre.getStyle().set("color", "#2c3e50");
+        titre.addClassName("page-title");
 
         prenomField = new TextField("Prénom");
         prenomField.setPlaceholder("Entrez le prénom du joueur");
         prenomField.setRequired(true);
-        prenomField.setWidth("300px");
+        prenomField.addClassName("form-field");
 
         nomField = new TextField("Nom");
         nomField.setPlaceholder("Entrez le nom du joueur");
         nomField.setRequired(true);
-        nomField.setWidth("300px");
+        nomField.addClassName("form-field");
 
         tailleField = new NumberField("Taille (cm)");
         tailleField.setPlaceholder("Entrez la taille du joueur en centimètres");
         tailleField.setRequired(true);
         tailleField.setMin(50);
         tailleField.setMax(250);
-        tailleField.setWidth("300px");
+        tailleField.addClassName("form-field");
 
         ajouterButton = new Button("Ajouter");
         ajouterButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        ajouterButton.setWidth("140px");
+        ajouterButton.addClassName("btn-primary");
         ajouterButton.addClickListener(e -> ajouterJoueur());
 
-        add(titre, prenomField, nomField, tailleField, ajouterButton);
+        container.add(titre, prenomField, nomField, tailleField, ajouterButton);
+        this.add(container);
     }
 
     private void ajouterJoueur() {
