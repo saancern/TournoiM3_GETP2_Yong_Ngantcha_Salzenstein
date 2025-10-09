@@ -1,21 +1,3 @@
-/*
-Copyright 2000- Francois de Bertrand de Beuvron
-
-This file is part of CoursBeuvron.
-
-CoursBeuvron is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-CoursBeuvron is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with CoursBeuvron.  If not, see <http://www.gnu.org/licenses/>.
- */
 package my.insa.yong.vaadin.utils.dataGrid;
 
 import my.insa.yong.utils.database.ResultSetUtils;
@@ -29,7 +11,7 @@ import java.sql.SQLException;
  * On fourni le PreparedStatement plutôt que directement le ResultSet : cela
  * permet si besoin de rafraichir la Grid en ré-évaluant le PreparedStatement.
  * </pre>
- * @author francois
+ * @author saancern
  */
 public class ResultSetGrid extends DataGrid {
 
