@@ -19,6 +19,7 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
+import my.insa.yong.model.UserSession;
 import my.insa.yong.utils.database.ConnectionSimpleSGBD;
 
 /**
@@ -113,13 +114,17 @@ public class VueConnexion extends VerticalLayout {
                 if (rs.next()) {
                     String passStocke = rs.getString("pass");
                     if (motDePasse.equals(passStocke)) {
+                        int userId = rs.getInt("id");
                         boolean isAdmin = rs.getBoolean("isAdmin");
+                        
+                        // Set user session
+                        UserSession.setCurrentUser(userId, surnom, isAdmin);
+                        
                         // Connexion réussie - automatically redirect based on admin status
                         String roleMessage = isAdmin ? " (Administrateur)" : " (Utilisateur)";
                         afficherNotificationSucces("Connexion réussie ! Bienvenue " + surnom + roleMessage);
                         
-                        // TODO: Store user session info including admin status
-                        // For now, redirect to main page
+                        // Redirect to main page
                         getUI().ifPresent(ui -> ui.navigate(""));
                     } else {
                         afficherNotificationErreur("Mot de passe incorrect.");
@@ -179,7 +184,7 @@ public class VueConnexion extends VerticalLayout {
 
             // Créer le nouvel utilisateur
             String sqlInsert = "INSERT INTO utilisateur (surnom, pass, isAdmin) VALUES (?, ?, ?)";
-            try (PreparedStatement pstInsert = con.prepareStatement(sqlInsert)) {
+            try (PreparedStatement pstInsert = con.prepareStatement(sqlInsert, PreparedStatement.RETURN_GENERATED_KEYS)) {
                 pstInsert.setString(1, surnom);
                 pstInsert.setString(2, motDePasse);
                 pstInsert.setBoolean(3, isAdmin);
@@ -187,11 +192,21 @@ public class VueConnexion extends VerticalLayout {
                 int rowsAffected = pstInsert.executeUpdate();
 
                 if (rowsAffected > 0) {
+                    // Get the generated user ID
+                    ResultSet generatedKeys = pstInsert.getGeneratedKeys();
+                    int userId = -1;
+                    if (generatedKeys.next()) {
+                        userId = generatedKeys.getInt(1);
+                    }
+                    
+                    // Set user session for automatic login
+                    UserSession.setCurrentUser(userId, surnom, isAdmin);
+                    
                     String roleMessage = isAdmin ? " (Administrateur)" : " (Utilisateur)";
                     afficherNotificationSucces("Inscription réussie ! Connexion automatique..." + roleMessage);
                     viderChamps();
                     
-                    // Automatically login the user
+                    // Automatically login the user and redirect
                     getUI().ifPresent(ui -> ui.navigate(""));
                 } else {
                     afficherNotificationErreur("Échec de l'inscription. Veuillez réessayer.");

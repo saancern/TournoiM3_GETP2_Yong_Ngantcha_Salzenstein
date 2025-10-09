@@ -1,10 +1,16 @@
 package my.insa.yong.webui;
 
-import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouterLink;
+
+import my.insa.yong.model.UserSession;
 
 /**
  *
@@ -26,8 +32,26 @@ public class VuePrincipale extends VerticalLayout {
         container.setAlignItems(Alignment.CENTER);
         container.setSpacing(true);
         
-        H2 titre = new H2("Bienvenue dans l'application Tournoi");
+        if (UserSession.isUserLoggedIn()) {
+            // Contenu pour utilisateur connecté
+            construireInterfaceUtilisateurConnecte(container);
+        } else {
+            // Contenu pour utilisateur non connecté
+            construireInterfaceUtilisateurNonConnecte(container);
+        }
+        
+        this.add(container);
+        this.setAlignItems(Alignment.CENTER);
+        this.setJustifyContentMode(JustifyContentMode.CENTER);
+        this.setSizeFull();
+    }
+    
+    private void construireInterfaceUtilisateurNonConnecte(VerticalLayout container) {
+        H1 titre = new H1("Bienvenue dans l'application Tournoi");
         titre.addClassName("page-title");
+
+        H3 sousTitre = new H3("Veuillez vous connecter pour accéder à l'application");
+        sousTitre.addClassName("page-subtitle");
 
         // Lien vers la page de connexion
         RouterLink lienConnexion = new RouterLink("Se connecter / S'inscrire", VueConnexion.class);
@@ -40,6 +64,42 @@ public class VuePrincipale extends VerticalLayout {
         lienConnexion.getStyle().set("border-radius", "6px");
         lienConnexion.getStyle().set("transition", "all 0.3s ease");
 
+        container.add(titre, sousTitre, lienConnexion);
+    }
+    
+    private void construireInterfaceUtilisateurConnecte(VerticalLayout container) {
+        // Titre personnalisé avec nom de l'utilisateur
+        String username = UserSession.getCurrentUsername();
+        H1 titre = new H1("Bienvenue " + username + " !");
+        titre.addClassName("page-title");
+
+        // Sous-titre avec le rôle de l'utilisateur
+        String role = UserSession.getCurrentUserRoleDisplay();
+        H3 sousTitre = new H3("Vous êtes connecté(e) avec les privilèges : " + role);
+        sousTitre.addClassName("page-subtitle");
+        
+        // Informations sur le niveau d'accès
+        H3 infoAcces = new H3();
+        if (UserSession.isCurrentUserAdmin()) {
+            infoAcces.setText("🔑 Mode Administrateur - Accès complet");
+            infoAcces.getStyle().set("color", "var(--warning-color)");
+        } else {
+            infoAcces.setText("👤 Mode Utilisateur - Accès standard");
+            infoAcces.getStyle().set("color", "var(--success-color)");
+        }
+        infoAcces.addClassName("section-title");
+
+        // Bouton pour changer d'utilisateur
+        Button boutonChangerUtilisateur = new Button("Changer d'utilisateur");
+        boutonChangerUtilisateur.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        boutonChangerUtilisateur.addClassName("btn-primary");
+        boutonChangerUtilisateur.addClickListener(e -> {
+            // Déconnecter l'utilisateur actuel
+            UserSession.clearCurrentUser();
+            // Rafraîchir la page pour afficher l'interface de connexion
+            getUI().ifPresent(ui -> ui.getPage().reload());
+        });
+
         // Lien vers la page d'ajout de joueur
         RouterLink lienJoueur = new RouterLink("Ajouter un joueur", VueJoueur.class);
         lienJoueur.addClassName("nav-link");
@@ -50,12 +110,12 @@ public class VuePrincipale extends VerticalLayout {
         lienJoueur.getStyle().set("border", "2px solid var(--success-color)");
         lienJoueur.getStyle().set("border-radius", "6px");
         lienJoueur.getStyle().set("transition", "all 0.3s ease");
+        
+        // Layout pour les boutons
+        HorizontalLayout layoutBoutons = new HorizontalLayout(boutonChangerUtilisateur, lienJoueur);
+        layoutBoutons.addClassName("button-group");
 
-        container.add(titre, lienConnexion, lienJoueur);
-        this.add(container);
-        this.setAlignItems(Alignment.CENTER);
-        this.setJustifyContentMode(JustifyContentMode.CENTER);
-        this.setSizeFull();
+        container.add(titre, sousTitre, infoAcces, layoutBoutons);
     }
 
 }
