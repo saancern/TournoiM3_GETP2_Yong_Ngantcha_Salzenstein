@@ -27,7 +27,7 @@ public class GestionBdD {
             + ConnectionSimpleSGBD.sqlForGeneratedKeys(con, "id") + ","
             + " surnom varchar(30) not null unique,"
             + " pass varchar(20) not null,"
-            + " role integer not null "
+            + " isAdmin boolean not null default false "
             + ") "
         );
         st.executeUpdate("create table loisir ( "

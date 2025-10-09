@@ -9,22 +9,22 @@ public class Utilisateur {
     private int id;
     private String surnom;
     private String pass;
-    private int role; // Niveau d'accès administratif
+    private boolean isAdmin; // Privilèges administrateur
     
     public Utilisateur() {
     }
     
-    public Utilisateur(String surnom, String pass, int role) {
+    public Utilisateur(String surnom, String pass, boolean isAdmin) {
         this.surnom = surnom;
         this.pass = pass;
-        this.role = role;
+        this.isAdmin = isAdmin;
     }
     
-    public Utilisateur(int id, String surnom, String pass, int role) {
+    public Utilisateur(int id, String surnom, String pass, boolean isAdmin) {
         this.id = id;
         this.surnom = surnom;
         this.pass = pass;
-        this.role = role;
+        this.isAdmin = isAdmin;
     }
     
     // Getters and Setters
@@ -52,12 +52,12 @@ public class Utilisateur {
         this.pass = pass;
     }
     
-    public int getRole() {
-        return role;
+    public boolean isAdmin() {
+        return isAdmin;
     }
     
-    public void setRole(int role) {
-        this.role = role;
+    public void setAdmin(boolean isAdmin) {
+        this.isAdmin = isAdmin;
     }
     
     @Override
@@ -65,7 +65,7 @@ public class Utilisateur {
         return "Utilisateur{" +
                 "id=" + id +
                 ", surnom='" + surnom + '\'' +
-                ", role=" + role +
+                ", isAdmin=" + isAdmin +
                 '}';
     }
 }
