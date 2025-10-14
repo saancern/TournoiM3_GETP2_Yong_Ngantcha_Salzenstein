@@ -30,6 +30,8 @@ public class VueJoueur extends VerticalLayout {
 
     private TextField prenomField;
     private TextField nomField;
+    private NumberField ageField;
+    private ComboBox<String> sexeField;
     private NumberField tailleField;
     private Button ajouterButton;
     private Button modifierButton;
@@ -74,7 +76,7 @@ public class VueJoueur extends VerticalLayout {
         operationButtons.setSpacing(true);
 
         ajouterButton = new Button("Ajouter");
-        ajouterButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        ajouterButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         ajouterButton.addClickListener(e -> setMode(OperationMode.AJOUTER));
 
         modifierButton = new Button("Modifier");
@@ -113,6 +115,21 @@ public class VueJoueur extends VerticalLayout {
         nomField.addClassName("form-field");
         nomField.setWidthFull();
 
+        ageField = new NumberField("Âge");
+        ageField.setPlaceholder("Entrez l'âge du joueur");
+        ageField.setRequired(true);
+        ageField.setMin(1);
+        ageField.setMax(150);
+        ageField.addClassName("form-field");
+        ageField.setWidthFull();
+
+        sexeField = new ComboBox<>("Sexe");
+        sexeField.setItems("H", "F");
+        sexeField.setPlaceholder("Sélectionnez le sexe");
+        sexeField.setRequired(true);
+        sexeField.addClassName("form-field");
+        sexeField.setWidthFull();
+
         tailleField = new NumberField("Taille (cm)");
         tailleField.setPlaceholder("Entrez la taille du joueur en cm");
         tailleField.setRequired(true);
@@ -122,13 +139,13 @@ public class VueJoueur extends VerticalLayout {
         tailleField.setWidthFull();
 
         // Bouton de soumission (texte changera selon l'opération)
-        submitButton = new Button("Ajouter le joueur");
+        submitButton = new Button("Valider");
         submitButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         submitButton.addClassName("btn-primary");
         submitButton.addClickListener(e -> executerOperation());
         submitButton.setWidthFull();
 
-        leftPanel.add(titreForm, operationButtons, playerSelector, prenomField, nomField, tailleField, submitButton);
+        leftPanel.add(titreForm, operationButtons, playerSelector, prenomField, nomField, ageField, sexeField, tailleField, submitButton);
 
         // Partie droite - Tableau des joueurs
         VerticalLayout rightPanel = new VerticalLayout();
@@ -144,6 +161,8 @@ public class VueJoueur extends VerticalLayout {
         joueursGrid.addColumn(Joueur::getId).setHeader("ID").setWidth("80px").setFlexGrow(0);
         joueursGrid.addColumn(Joueur::getPrenom).setHeader("Prénom").setAutoWidth(true);
         joueursGrid.addColumn(Joueur::getNom).setHeader("Nom").setAutoWidth(true);
+        joueursGrid.addColumn(Joueur::getAge).setHeader("Âge").setAutoWidth(true);
+        joueursGrid.addColumn(Joueur::getSexe).setHeader("Sexe").setAutoWidth(true);
         joueursGrid.addColumn(joueur -> String.format("%.1f cm", joueur.getTaille()))
                    .setHeader("Taille").setAutoWidth(true);
         
@@ -174,7 +193,7 @@ public class VueJoueur extends VerticalLayout {
         
         switch (mode) {
             case AJOUTER:
-                titreForm.setText("Détails du joueur - Ajouter");
+                titreForm.setText("Détails du joueur");
                 ajouterButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
                 modifierButton.removeThemeVariants(ButtonVariant.LUMO_PRIMARY);
                 modifierButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
@@ -185,12 +204,13 @@ public class VueJoueur extends VerticalLayout {
                 prenomField.setReadOnly(false);
                 nomField.setReadOnly(false);
                 tailleField.setReadOnly(false);
-                submitButton.setText("Ajouter le joueur");
+                ageField.setReadOnly(false);
+                sexeField.setReadOnly(false);
                 viderFormulaire();
                 break;
                 
             case MODIFIER:
-                titreForm.setText("Détails du joueur - Modifier");
+                titreForm.setText("Détails du joueur");
                 ajouterButton.removeThemeVariants(ButtonVariant.LUMO_PRIMARY);
                 ajouterButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
                 modifierButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -201,24 +221,26 @@ public class VueJoueur extends VerticalLayout {
                 prenomField.setReadOnly(false);
                 nomField.setReadOnly(false);
                 tailleField.setReadOnly(false);
-                submitButton.setText("Modifier le joueur");
+                ageField.setReadOnly(false);
+                sexeField.setReadOnly(false);
                 viderFormulaire();
                 chargerJoueursSelector();
                 break;
                 
             case SUPPRIMER:
-                titreForm.setText("Détails du joueur - Supprimer");
+                titreForm.setText("Détails du joueur");
                 ajouterButton.removeThemeVariants(ButtonVariant.LUMO_PRIMARY);
                 ajouterButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
                 modifierButton.removeThemeVariants(ButtonVariant.LUMO_PRIMARY);
                 modifierButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-                supprimerButton.addThemeVariants(ButtonVariant.LUMO_ERROR);
+                supprimerButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
                 
                 playerSelector.setVisible(true);
                 prenomField.setReadOnly(true);
                 nomField.setReadOnly(true);
                 tailleField.setReadOnly(true);
-                submitButton.setText("Supprimer le joueur");
+                ageField.setReadOnly(true);
+                sexeField.setReadOnly(true);
                 submitButton.removeThemeVariants(ButtonVariant.LUMO_PRIMARY);
                 submitButton.addThemeVariants(ButtonVariant.LUMO_ERROR);
                 viderFormulaire();
@@ -234,6 +256,8 @@ public class VueJoueur extends VerticalLayout {
         prenomField.setValue(joueur.getPrenom());
         nomField.setValue(joueur.getNom());
         tailleField.setValue(joueur.getTaille());
+        ageField.setValue((double) joueur.getAge());
+        sexeField.setValue(joueur.getSexe());
     }
 
     /**
@@ -244,6 +268,8 @@ public class VueJoueur extends VerticalLayout {
         nomField.clear();
         tailleField.clear();
         playerSelector.clear();
+        ageField.clear();
+        sexeField.clear();
     }
 
     /**
@@ -253,7 +279,7 @@ public class VueJoueur extends VerticalLayout {
         List<Joueur> joueurs = new ArrayList<>();
         
         try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
-            String sql = "SELECT id, prenom, nom, taille FROM joueur ORDER BY nom, prenom";
+            String sql = "SELECT id, prenom, nom, age, sexe, taille FROM joueur ORDER BY nom, prenom";
             try (PreparedStatement pst = con.prepareStatement(sql);
                  ResultSet rs = pst.executeQuery()) {
                 
@@ -262,6 +288,8 @@ public class VueJoueur extends VerticalLayout {
                         rs.getInt("id"),
                         rs.getString("prenom"),
                         rs.getString("nom"),
+                        rs.getInt("age"),
+                        rs.getString("sexe"),
                         rs.getDouble("taille")
                     );
                     joueurs.add(joueur);
@@ -300,19 +328,26 @@ public class VueJoueur extends VerticalLayout {
         String prenom = prenomField.getValue().trim();
         String nom = nomField.getValue().trim();
         Double taille = tailleField.getValue();
+        Double ageDouble = ageField.getValue();
+        String sexe = sexeField.getValue();
 
-        if (prenom.isEmpty() || nom.isEmpty() || taille == null || taille <= 0) {
+        if (prenom.isEmpty() || nom.isEmpty() || taille == null || taille <= 0 || 
+            ageDouble == null || ageDouble <= 0 || sexe == null || sexe.isEmpty()) {
             Notification.show("Veuillez remplir tous les champs correctement.", 3000, Notification.Position.TOP_CENTER)
                 .addThemeVariants(NotificationVariant.LUMO_ERROR);
             return;
         }
 
+        int age = ageDouble.intValue();
+
         try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
-            String sql = "INSERT INTO joueur (prenom, nom, taille) VALUES (?, ?, ?)";
+            String sql = "INSERT INTO joueur (prenom, nom, age, sexe, taille) VALUES (?, ?, ?, ?, ?)";
             try (PreparedStatement pst = con.prepareStatement(sql)) {
                 pst.setString(1, prenom);
                 pst.setString(2, nom);
-                pst.setDouble(3, taille);
+                pst.setInt(3, age);
+                pst.setString(4, sexe);
+                pst.setDouble(5, taille);
                 
                 int rows = pst.executeUpdate();
                 if (rows > 0) {
@@ -345,20 +380,27 @@ public class VueJoueur extends VerticalLayout {
         String prenom = prenomField.getValue().trim();
         String nom = nomField.getValue().trim();
         Double taille = tailleField.getValue();
+        Double ageDouble = ageField.getValue();
+        String sexe = sexeField.getValue();
 
-        if (prenom.isEmpty() || nom.isEmpty() || taille == null || taille <= 0) {
+        if (prenom.isEmpty() || nom.isEmpty() || taille == null || taille <= 0 || 
+            ageDouble == null || ageDouble <= 0 || sexe == null || sexe.isEmpty()) {
             Notification.show("Veuillez remplir tous les champs correctement.", 3000, Notification.Position.TOP_CENTER)
                 .addThemeVariants(NotificationVariant.LUMO_ERROR);
             return;
         }
 
+        int age = ageDouble.intValue();
+
         try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
-            String sql = "UPDATE joueur SET prenom = ?, nom = ?, taille = ? WHERE id = ?";
+            String sql = "UPDATE joueur SET prenom = ?, nom = ?, age = ?, sexe = ?, taille = ? WHERE id = ?";
             try (PreparedStatement pst = con.prepareStatement(sql)) {
                 pst.setString(1, prenom);
                 pst.setString(2, nom);
-                pst.setDouble(3, taille);
-                pst.setInt(4, joueurSelectionne.getId());
+                pst.setInt(3, age);
+                pst.setString(4, sexe);
+                pst.setDouble(5, taille);
+                pst.setInt(6, joueurSelectionne.getId());
                 
                 int rows = pst.executeUpdate();
                 if (rows > 0) {
@@ -421,7 +463,7 @@ public class VueJoueur extends VerticalLayout {
         List<Joueur> joueurs = new ArrayList<>();
         
         try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
-            String sql = "SELECT id, prenom, nom, taille FROM joueur ORDER BY nom, prenom";
+            String sql = "SELECT * FROM joueur ORDER BY nom, prenom";
             try (PreparedStatement pst = con.prepareStatement(sql);
                  ResultSet rs = pst.executeQuery()) {
                 
@@ -430,6 +472,8 @@ public class VueJoueur extends VerticalLayout {
                         rs.getInt("id"),
                         rs.getString("prenom"),
                         rs.getString("nom"),
+                        rs.getInt("age"),
+                        rs.getString("sexe"),
                         rs.getDouble("taille")
                     );
                     joueurs.add(joueur);

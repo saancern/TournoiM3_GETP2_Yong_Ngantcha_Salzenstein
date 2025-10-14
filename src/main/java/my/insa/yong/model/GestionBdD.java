@@ -34,7 +34,9 @@ public class GestionBdD {
             + ConnectionSimpleSGBD.sqlForGeneratedKeys(con, "id") + ","
             + " prenom varchar(50) not null,"
             + " nom varchar(50) not null,"
-            + " taille double precision not null "
+            + " taille double precision not null,"
+            + " age int not null,"
+            + " sexe char(1) check (sexe in ('F','H'))"
             + ") "
         );
         con.commit();

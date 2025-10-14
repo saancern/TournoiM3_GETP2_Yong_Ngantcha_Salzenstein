@@ -8,6 +8,8 @@ public class Joueur {
     private int id;
     private String prenom;
     private String nom;
+    private int age;
+    private String sexe;
     private double taille;
 
     public Joueur() {
@@ -17,6 +19,15 @@ public class Joueur {
         this.id = id;
         this.prenom = prenom;
         this.nom = nom;
+        this.taille = taille;
+    }
+
+    public Joueur(int id, String prenom, String nom, int age, String sexe, double taille) {
+        this.id = id;
+        this.prenom = prenom;
+        this.nom = nom;
+        this.age = age;
+        this.sexe = sexe;
         this.taille = taille;
     }
 
@@ -44,6 +55,22 @@ public class Joueur {
         this.nom = nom;
     }
 
+    public int getAge() {
+        return age;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
+    }
+
+    public String getSexe() {
+        return sexe;
+    }
+
+    public void setSexe(String sexe) {
+        this.sexe = sexe;
+    }
+
     public double getTaille() {
         return taille;
     }
@@ -54,6 +81,6 @@ public class Joueur {
 
     @Override
     public String toString() {
-        return String.format("%s %s (%.1f cm)", prenom, nom, taille);
+        return String.format("%s %s (%d ans, %s, %.1f cm)", prenom, nom, age, sexe, taille);
     }
 }

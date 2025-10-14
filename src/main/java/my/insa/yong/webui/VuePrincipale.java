@@ -55,14 +55,7 @@ public class VuePrincipale extends VerticalLayout {
 
         // Lien vers la page de connexion
         RouterLink lienConnexion = new RouterLink("Se connecter / S'inscrire", VueConnexion.class);
-        lienConnexion.addClassName("nav-link");
-        lienConnexion.getStyle().set("font-size", "18px");
-        lienConnexion.getStyle().set("color", "var(--primary-color)");
-        lienConnexion.getStyle().set("text-decoration", "none");
-        lienConnexion.getStyle().set("padding", "12px 24px");
-        lienConnexion.getStyle().set("border", "2px solid var(--primary-color)");
-        lienConnexion.getStyle().set("border-radius", "6px");
-        lienConnexion.getStyle().set("transition", "all 0.3s ease");
+        lienConnexion.addClassName("link-button-primary");
 
         container.add(titre, sousTitre, lienConnexion);
     }
@@ -82,10 +75,10 @@ public class VuePrincipale extends VerticalLayout {
         H3 infoAcces = new H3();
         if (UserSession.isCurrentUserAdmin()) {
             infoAcces.setText("Mode Administrateur - Accès complet");
-            infoAcces.getStyle().set("color", "var(--warning-color)");
+            infoAcces.addClassName("text-warning");
         } else {
             infoAcces.setText("Mode Utilisateur - Accès standard");
-            infoAcces.getStyle().set("color", "var(--success-color)");
+            infoAcces.addClassName("text-success");
         }
         infoAcces.addClassName("section-title");
 
@@ -102,14 +95,7 @@ public class VuePrincipale extends VerticalLayout {
 
         // Lien vers la page d'ajout de joueur
         RouterLink lienJoueur = new RouterLink("Joueur", VueJoueur.class);
-        lienJoueur.addClassName("nav-link");
-        lienJoueur.getStyle().set("font-size", "18px");
-        lienJoueur.getStyle().set("color", "var(--success-color)");
-        lienJoueur.getStyle().set("text-decoration", "none");
-        lienJoueur.getStyle().set("padding", "12px 24px");
-        lienJoueur.getStyle().set("border", "2px solid var(--success-color)");
-        lienJoueur.getStyle().set("border-radius", "6px");
-        lienJoueur.getStyle().set("transition", "all 0.3s ease");
+        lienJoueur.addClassName("link-button-success");
         
         // Layout pour les boutons
         HorizontalLayout layoutBoutons = new HorizontalLayout(boutonChangerUtilisateur, lienJoueur);
