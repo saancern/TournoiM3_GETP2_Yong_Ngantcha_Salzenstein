@@ -101,7 +101,7 @@ public class VuePrincipale extends VerticalLayout {
         });
 
         // Lien vers la page d'ajout de joueur
-        RouterLink lienJoueur = new RouterLink("Ajouter un joueur", VueJoueur.class);
+        RouterLink lienJoueur = new RouterLink("Joueur", VueJoueur.class);
         lienJoueur.addClassName("nav-link");
         lienJoueur.getStyle().set("font-size", "18px");
         lienJoueur.getStyle().set("color", "var(--success-color)");

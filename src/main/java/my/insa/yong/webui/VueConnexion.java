@@ -28,7 +28,7 @@ import my.insa.yong.utils.database.ConnectionSimpleSGBD;
  * @author saancern
  */
 @Route(value = "connexion")
-@PageTitle("Connexion - Inscription")
+@PageTitle("Connexion/Inscription")
 public class VueConnexion extends VerticalLayout {
 
     private TextField champSurnom;

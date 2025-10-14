@@ -439,3 +439,31 @@ vaadin-router-link {
 
 .hidden { display: none; }
 .visible { display: block; }
+
+/* ===== PLAYERS GRID ===== */
+.players-grid {
+  background-color: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.players-grid vaadin-grid-cell-content {
+  padding: 8px 12px;
+}
+
+/* Grid header styling */
+.players-grid [part="header-cell"] {
+  background-color: var(--primary-color);
+  color: var(--white);
+  font-weight: bold;
+}
+
+/* Grid row hover effect */
+.players-grid [part="body-cell"] {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.players-grid [part="row"]:hover [part="body-cell"] {
+  background-color: #f8f9fa;
+}
