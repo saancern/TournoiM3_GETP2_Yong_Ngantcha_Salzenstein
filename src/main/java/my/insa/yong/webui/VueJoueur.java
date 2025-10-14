@@ -9,6 +9,7 @@ import java.util.List;
 
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.notification.Notification;
@@ -31,7 +32,18 @@ public class VueJoueur extends VerticalLayout {
     private TextField nomField;
     private NumberField tailleField;
     private Button ajouterButton;
+    private Button modifierButton;
+    private Button supprimerButton;
+    private Button submitButton;
+    private ComboBox<Joueur> playerSelector;
     private Grid<Joueur> joueursGrid;
+    private H2 titreForm;
+    
+    private enum OperationMode {
+        AJOUTER, MODIFIER, SUPPRIMER
+    }
+    
+    private OperationMode currentMode = OperationMode.AJOUTER;
 
     public VueJoueur() {
         this.addClassName("app-container");
@@ -44,7 +56,7 @@ public class VueJoueur extends VerticalLayout {
         mainLayout.setSizeFull();
         mainLayout.setSpacing(true);
 
-        // Partie gauche - Formulaire d'ajout
+        // Partie gauche - Formulaire avec opérations
         VerticalLayout leftPanel = new VerticalLayout();
         leftPanel.addClassName("form-container");
         leftPanel.addClassName("fade-in");
@@ -52,9 +64,43 @@ public class VueJoueur extends VerticalLayout {
         leftPanel.setSpacing(true);
         leftPanel.setPadding(true);
 
-        H2 titreForm = new H2("Ajouter un joueur");
+        // Titre du formulaire (changera selon l'opération)
+        titreForm = new H2("Détails du joueur");
         titreForm.addClassName("page-title");
 
+        // Boutons d'opération en haut
+        HorizontalLayout operationButtons = new HorizontalLayout();
+        operationButtons.setWidthFull();
+        operationButtons.setSpacing(true);
+
+        ajouterButton = new Button("Ajouter");
+        ajouterButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        ajouterButton.addClickListener(e -> setMode(OperationMode.AJOUTER));
+
+        modifierButton = new Button("Modifier");
+        modifierButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        modifierButton.addClickListener(e -> setMode(OperationMode.MODIFIER));
+
+        supprimerButton = new Button("Supprimer");
+        supprimerButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
+        supprimerButton.addClickListener(e -> setMode(OperationMode.SUPPRIMER));
+
+        operationButtons.add(ajouterButton, modifierButton, supprimerButton);
+
+        // Sélecteur de joueur (visible seulement pour Modifier/Supprimer)
+        playerSelector = new ComboBox<>("Sélectionner un joueur");
+        playerSelector.setItemLabelGenerator(joueur -> 
+            String.format("%d - %s %s", joueur.getId(), joueur.getPrenom(), joueur.getNom()));
+        playerSelector.setPlaceholder("Choisissez un joueur...");
+        playerSelector.setWidthFull();
+        playerSelector.addValueChangeListener(e -> {
+            if (e.getValue() != null) {
+                remplirFormulaire(e.getValue());
+            }
+        });
+        playerSelector.setVisible(false);
+
+        // Champs du formulaire
         prenomField = new TextField("Prénom");
         prenomField.setPlaceholder("Entrez le prénom du joueur");
         prenomField.setRequired(true);
@@ -75,13 +121,14 @@ public class VueJoueur extends VerticalLayout {
         tailleField.addClassName("form-field");
         tailleField.setWidthFull();
 
-        ajouterButton = new Button("Ajouter");
-        ajouterButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        ajouterButton.addClassName("btn-primary");
-        ajouterButton.addClickListener(e -> ajouterJoueur());
-        ajouterButton.setWidthFull();
+        // Bouton de soumission (texte changera selon l'opération)
+        submitButton = new Button("Ajouter le joueur");
+        submitButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        submitButton.addClassName("btn-primary");
+        submitButton.addClickListener(e -> executerOperation());
+        submitButton.setWidthFull();
 
-        leftPanel.add(titreForm, prenomField, nomField, tailleField, ajouterButton);
+        leftPanel.add(titreForm, operationButtons, playerSelector, prenomField, nomField, tailleField, submitButton);
 
         // Partie droite - Tableau des joueurs
         VerticalLayout rightPanel = new VerticalLayout();
@@ -114,16 +161,149 @@ public class VueJoueur extends VerticalLayout {
 
         // Charger les joueurs au démarrage
         chargerJoueurs();
+        
+        // Initialiser en mode Ajouter
+        setMode(OperationMode.AJOUTER);
     }
 
+    /**
+     * Change le mode d'opération (Ajouter, Modifier, Supprimer)
+     */
+    private void setMode(OperationMode mode) {
+        this.currentMode = mode;
+        
+        switch (mode) {
+            case AJOUTER:
+                titreForm.setText("Détails du joueur - Ajouter");
+                ajouterButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+                modifierButton.removeThemeVariants(ButtonVariant.LUMO_PRIMARY);
+                modifierButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+                supprimerButton.removeThemeVariants(ButtonVariant.LUMO_PRIMARY);
+                supprimerButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
+                
+                playerSelector.setVisible(false);
+                prenomField.setReadOnly(false);
+                nomField.setReadOnly(false);
+                tailleField.setReadOnly(false);
+                submitButton.setText("Ajouter le joueur");
+                viderFormulaire();
+                break;
+                
+            case MODIFIER:
+                titreForm.setText("Détails du joueur - Modifier");
+                ajouterButton.removeThemeVariants(ButtonVariant.LUMO_PRIMARY);
+                ajouterButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+                modifierButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+                supprimerButton.removeThemeVariants(ButtonVariant.LUMO_PRIMARY);
+                supprimerButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
+                
+                playerSelector.setVisible(true);
+                prenomField.setReadOnly(false);
+                nomField.setReadOnly(false);
+                tailleField.setReadOnly(false);
+                submitButton.setText("Modifier le joueur");
+                viderFormulaire();
+                chargerJoueursSelector();
+                break;
+                
+            case SUPPRIMER:
+                titreForm.setText("Détails du joueur - Supprimer");
+                ajouterButton.removeThemeVariants(ButtonVariant.LUMO_PRIMARY);
+                ajouterButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+                modifierButton.removeThemeVariants(ButtonVariant.LUMO_PRIMARY);
+                modifierButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+                supprimerButton.addThemeVariants(ButtonVariant.LUMO_ERROR);
+                
+                playerSelector.setVisible(true);
+                prenomField.setReadOnly(true);
+                nomField.setReadOnly(true);
+                tailleField.setReadOnly(true);
+                submitButton.setText("Supprimer le joueur");
+                submitButton.removeThemeVariants(ButtonVariant.LUMO_PRIMARY);
+                submitButton.addThemeVariants(ButtonVariant.LUMO_ERROR);
+                viderFormulaire();
+                chargerJoueursSelector();
+                break;
+        }
+    }
+
+    /**
+     * Remplit le formulaire avec les données du joueur sélectionné
+     */
+    private void remplirFormulaire(Joueur joueur) {
+        prenomField.setValue(joueur.getPrenom());
+        nomField.setValue(joueur.getNom());
+        tailleField.setValue(joueur.getTaille());
+    }
+
+    /**
+     * Vide le formulaire
+     */
+    private void viderFormulaire() {
+        prenomField.clear();
+        nomField.clear();
+        tailleField.clear();
+        playerSelector.clear();
+    }
+
+    /**
+     * Charge les joueurs dans le sélecteur
+     */
+    private void chargerJoueursSelector() {
+        List<Joueur> joueurs = new ArrayList<>();
+        
+        try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
+            String sql = "SELECT id, prenom, nom, taille FROM joueur ORDER BY nom, prenom";
+            try (PreparedStatement pst = con.prepareStatement(sql);
+                 ResultSet rs = pst.executeQuery()) {
+                
+                while (rs.next()) {
+                    Joueur joueur = new Joueur(
+                        rs.getInt("id"),
+                        rs.getString("prenom"),
+                        rs.getString("nom"),
+                        rs.getDouble("taille")
+                    );
+                    joueurs.add(joueur);
+                }
+            }
+            
+            playerSelector.setItems(joueurs);
+            
+        } catch (SQLException ex) {
+            Notification.show("Erreur lors du chargement des joueurs : " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER)
+                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+    }
+
+    /**
+     * Exécute l'opération selon le mode courant
+     */
+    private void executerOperation() {
+        switch (currentMode) {
+            case AJOUTER:
+                ajouterJoueur();
+                break;
+            case MODIFIER:
+                modifierJoueur();
+                break;
+            case SUPPRIMER:
+                supprimerJoueur();
+                break;
+        }
+    }
+
+    /**
+     * Ajoute un nouveau joueur
+     */
     private void ajouterJoueur() {
         String prenom = prenomField.getValue().trim();
         String nom = nomField.getValue().trim();
         Double taille = tailleField.getValue();
 
         if (prenom.isEmpty() || nom.isEmpty() || taille == null || taille <= 0) {
-            Notification notification = Notification.show("Veuillez remplir tous les champs correctement.", 3000, Notification.Position.TOP_CENTER);
-            notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            Notification.show("Veuillez remplir tous les champs correctement.", 3000, Notification.Position.TOP_CENTER)
+                .addThemeVariants(NotificationVariant.LUMO_ERROR);
             return;
         }
 
@@ -136,21 +316,101 @@ public class VueJoueur extends VerticalLayout {
                 
                 int rows = pst.executeUpdate();
                 if (rows > 0) {
-                    Notification notification = Notification.show("Joueur ajouté avec succès !", 3000, Notification.Position.TOP_CENTER);
-                    notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                    prenomField.clear();
-                    nomField.clear();
-                    tailleField.clear();
-                    // Recharger la liste des joueurs
+                    Notification.show("Joueur ajouté avec succès !", 3000, Notification.Position.TOP_CENTER)
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                    viderFormulaire();
                     chargerJoueurs();
                 } else {
-                    Notification notification = Notification.show("Échec de l'ajout du joueur.", 3000, Notification.Position.TOP_CENTER);
-                    notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    Notification.show("Échec de l'ajout du joueur.", 3000, Notification.Position.TOP_CENTER)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
                 }
             }
         } catch (SQLException ex) {
-            Notification notification = Notification.show("Erreur lors de l'ajout : " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER);
-            notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            Notification.show("Erreur lors de l'ajout : " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER)
+                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+    }
+
+    /**
+     * Modifie un joueur existant
+     */
+    private void modifierJoueur() {
+        Joueur joueurSelectionne = playerSelector.getValue();
+        if (joueurSelectionne == null) {
+            Notification.show("Veuillez sélectionner un joueur à modifier.", 3000, Notification.Position.TOP_CENTER)
+                .addThemeVariants(NotificationVariant.LUMO_WARNING);
+            return;
+        }
+
+        String prenom = prenomField.getValue().trim();
+        String nom = nomField.getValue().trim();
+        Double taille = tailleField.getValue();
+
+        if (prenom.isEmpty() || nom.isEmpty() || taille == null || taille <= 0) {
+            Notification.show("Veuillez remplir tous les champs correctement.", 3000, Notification.Position.TOP_CENTER)
+                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            return;
+        }
+
+        try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
+            String sql = "UPDATE joueur SET prenom = ?, nom = ?, taille = ? WHERE id = ?";
+            try (PreparedStatement pst = con.prepareStatement(sql)) {
+                pst.setString(1, prenom);
+                pst.setString(2, nom);
+                pst.setDouble(3, taille);
+                pst.setInt(4, joueurSelectionne.getId());
+                
+                int rows = pst.executeUpdate();
+                if (rows > 0) {
+                    Notification.show("Joueur modifié avec succès !", 3000, Notification.Position.TOP_CENTER)
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                    viderFormulaire();
+                    chargerJoueurs();
+                    chargerJoueursSelector();
+                } else {
+                    Notification.show("Échec de la modification du joueur.", 3000, Notification.Position.TOP_CENTER)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                }
+            }
+        } catch (SQLException ex) {
+            Notification.show("Erreur lors de la modification : " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER)
+                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+    }
+
+    /**
+     * Supprime un joueur
+     */
+    private void supprimerJoueur() {
+        Joueur joueurSelectionne = playerSelector.getValue();
+        if (joueurSelectionne == null) {
+            Notification.show("Veuillez sélectionner un joueur à supprimer.", 3000, Notification.Position.TOP_CENTER)
+                .addThemeVariants(NotificationVariant.LUMO_WARNING);
+            return;
+        }
+
+        try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
+            String sql = "DELETE FROM joueur WHERE id = ?";
+            try (PreparedStatement pst = con.prepareStatement(sql)) {
+                pst.setInt(1, joueurSelectionne.getId());
+                
+                int rows = pst.executeUpdate();
+                if (rows > 0) {
+                    Notification.show("Joueur supprimé avec succès !", 3000, Notification.Position.TOP_CENTER)
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                    viderFormulaire();
+                    chargerJoueurs();
+                    chargerJoueursSelector();
+                    // Revenir au mode Ajouter après suppression
+                    setMode(OperationMode.AJOUTER);
+                } else {
+                    Notification.show("Échec de la suppression du joueur.", 3000, Notification.Position.TOP_CENTER)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                }
+            }
+        } catch (SQLException ex) {
+            Notification.show("Erreur lors de la suppression : " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER)
+                .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
     }
 
