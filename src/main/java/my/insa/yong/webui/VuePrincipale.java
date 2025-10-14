@@ -11,6 +11,7 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouterLink;
 
 import my.insa.yong.model.UserSession;
+import my.insa.yong.webui.components.BaseLayout;
 
 /**
  *
@@ -18,13 +19,10 @@ import my.insa.yong.model.UserSession;
  */
 @Route(value = "")
 @PageTitle("Accueil")
-public class VuePrincipale extends VerticalLayout {
+public class VuePrincipale extends BaseLayout {
 
     public VuePrincipale() {
-        this.addClassName("app-container");
-        this.addClassName("centered-layout");
-        
-        // Container principal
+        // Container principal pour le contenu
         VerticalLayout container = new VerticalLayout();
         container.addClassName("form-container");
         container.addClassName("form-container-large");
@@ -40,10 +38,10 @@ public class VuePrincipale extends VerticalLayout {
             construireInterfaceUtilisateurNonConnecte(container);
         }
         
-        this.add(container);
-        this.setAlignItems(Alignment.CENTER);
-        this.setJustifyContentMode(JustifyContentMode.CENTER);
-        this.setSizeFull();
+        // Configurer l'alignement du contenu
+        this.setContentAlignment(Alignment.CENTER);
+        this.setContentJustifyMode(JustifyContentMode.CENTER);
+        this.addToContent(container);
     }
     
     private void construireInterfaceUtilisateurNonConnecte(VerticalLayout container) {
@@ -93,12 +91,8 @@ public class VuePrincipale extends VerticalLayout {
             getUI().ifPresent(ui -> ui.getPage().reload());
         });
 
-        // Lien vers la page d'ajout de joueur
-        RouterLink lienJoueur = new RouterLink("Joueur", VueJoueur.class);
-        lienJoueur.addClassName("link-button-success");
-        
         // Layout pour les boutons
-        HorizontalLayout layoutBoutons = new HorizontalLayout(boutonChangerUtilisateur, lienJoueur);
+        HorizontalLayout layoutBoutons = new HorizontalLayout(boutonChangerUtilisateur);
         layoutBoutons.addClassName("button-group");
 
         container.add(titre, sousTitre, infoAcces, layoutBoutons);

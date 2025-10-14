@@ -23,10 +23,11 @@ import com.vaadin.flow.router.Route;
 
 import my.insa.yong.model.Joueur;
 import my.insa.yong.utils.database.ConnectionSimpleSGBD;
+import my.insa.yong.webui.components.BaseLayout;
 
 @Route("joueur")
 @PageTitle("Joueur")
-public class VueJoueur extends VerticalLayout {
+public class VueJoueur extends BaseLayout {
 
     private TextField prenomField;
     private TextField nomField;
@@ -48,11 +49,6 @@ public class VueJoueur extends VerticalLayout {
     private OperationMode currentMode = OperationMode.AJOUTER;
 
     public VueJoueur() {
-        this.addClassName("app-container");
-        setSizeFull();
-        setPadding(true);
-        setSpacing(true);
-
         // Créer le layout principal horizontal (gauche/droite)
         HorizontalLayout mainLayout = new HorizontalLayout();
         mainLayout.setSizeFull();
@@ -176,7 +172,7 @@ public class VueJoueur extends VerticalLayout {
         mainLayout.setFlexGrow(0, leftPanel);  // Panel gauche taille fixe
         mainLayout.setFlexGrow(1, rightPanel); // Panel droit prend l'espace restant
 
-        this.add(mainLayout);
+        this.addToContent(mainLayout);
 
         // Charger les joueurs au démarrage
         chargerJoueurs();
