@@ -81,10 +81,10 @@ public class VuePrincipale extends VerticalLayout {
         // Informations sur le niveau d'accès
         H3 infoAcces = new H3();
         if (UserSession.isCurrentUserAdmin()) {
-            infoAcces.setText("🔑 Mode Administrateur - Accès complet");
+            infoAcces.setText("Mode Administrateur - Accès complet");
             infoAcces.getStyle().set("color", "var(--warning-color)");
         } else {
-            infoAcces.setText("👤 Mode Utilisateur - Accès standard");
+            infoAcces.setText("Mode Utilisateur - Accès standard");
             infoAcces.getStyle().set("color", "var(--success-color)");
         }
         infoAcces.addClassName("section-title");
