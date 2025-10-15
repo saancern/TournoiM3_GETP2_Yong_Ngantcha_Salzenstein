@@ -337,25 +337,17 @@ public class VueJoueur extends BaseLayout {
         int age = ageDouble.intValue();
 
         try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
-            String sql = "INSERT INTO joueur (prenom, nom, age, sexe, taille) VALUES (?, ?, ?, ?, ?)";
-            try (PreparedStatement pst = con.prepareStatement(sql)) {
-                pst.setString(1, prenom);
-                pst.setString(2, nom);
-                pst.setInt(3, age);
-                pst.setString(4, sexe);
-                pst.setDouble(5, taille);
-                
-                int rows = pst.executeUpdate();
-                if (rows > 0) {
-                    Notification.show("Joueur ajouté avec succès !", 3000, Notification.Position.TOP_CENTER)
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                    viderFormulaire();
-                    chargerJoueurs();
-                } else {
-                    Notification.show("Échec de l'ajout du joueur.", 3000, Notification.Position.TOP_CENTER)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-                }
-            }
+            // Créer un nouveau joueur (id = -1)
+            Joueur nouveauJoueur = new Joueur(prenom, nom, age, sexe, taille);
+            
+            // Sauvegarder en utilisant ClasseMiroir
+            int newId = nouveauJoueur.saveInDB(con);
+            
+            Notification.show("Joueur ajouté avec succès ! (ID: " + newId + ")", 3000, Notification.Position.TOP_CENTER)
+                .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            viderFormulaire();
+            chargerJoueurs();
+            
         } catch (SQLException ex) {
             Notification.show("Erreur lors de l'ajout : " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER)
                 .addThemeVariants(NotificationVariant.LUMO_ERROR);

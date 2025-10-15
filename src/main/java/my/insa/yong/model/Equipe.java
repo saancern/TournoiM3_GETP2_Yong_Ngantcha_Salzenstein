@@ -1,33 +1,57 @@
 package my.insa.yong.model;
 
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.List;
+
+import my.insa.yong.utils.database.ClasseMiroir;
 
 /**
  * Représente une équipe dans le système
  * @author saancern
  */
-public class Equipe {
-    private int id;
+public class Equipe extends ClasseMiroir {
     private String nomEquipe;
     private LocalDate dateCreation;
     private List<Joueur> joueurs;
 
+    /**
+     * Constructeur pour nouvelle équipe (id = -1)
+     */
     public Equipe() {
+        super(); // id = -1
     }
 
+    /**
+     * Constructeur pour équipe existante en base
+     */
     public Equipe(int id, String nomEquipe, LocalDate dateCreation) {
-        this.id = id;
+        super(id);
         this.nomEquipe = nomEquipe;
         this.dateCreation = dateCreation;
     }
 
-    public int getId() {
-        return id;
+    /**
+     * Constructeur pour nouvelle équipe avec données
+     */
+    public Equipe(String nomEquipe, LocalDate dateCreation) {
+        super(); // id = -1
+        this.nomEquipe = nomEquipe;
+        this.dateCreation = dateCreation;
     }
 
-    public void setId(int id) {
-        this.id = id;
+    @Override
+    protected Statement saveSansId(Connection con) throws SQLException {
+        String sql = "INSERT INTO equipe (nom_equipe, date_creation) VALUES (?, ?)";
+        PreparedStatement pst = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+        pst.setString(1, this.nomEquipe);
+        pst.setDate(2, Date.valueOf(this.dateCreation));
+        pst.executeUpdate();
+        return pst;
     }
 
     public String getNomEquipe() {

@@ -265,25 +265,14 @@ public class VueEquipe extends BaseLayout {
         try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
             con.setAutoCommit(false);
             
-            // Insérer l'équipe
-            String sql = "INSERT INTO equipe (nom_equipe, date_creation) VALUES (?, ?)";
-            int equipeId = 0;
-            try (PreparedStatement pst = con.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
-                pst.setString(1, nomEquipe);
-                pst.setDate(2, Date.valueOf(dateCreation));
-                
-                int rows = pst.executeUpdate();
-                if (rows > 0) {
-                    try (ResultSet keys = pst.getGeneratedKeys()) {
-                        if (keys.next()) {
-                            equipeId = keys.getInt(1);
-                        }
-                    }
-                }
-            }
+            // Créer une nouvelle équipe (id = -1)
+            Equipe nouvelleEquipe = new Equipe(nomEquipe, dateCreation);
+            
+            // Sauvegarder en utilisant ClasseMiroir
+            int equipeId = nouvelleEquipe.saveInDB(con);
             
             // Ajouter les joueurs à l'équipe
-            if (equipeId > 0 && !joueursSelectionnes.isEmpty()) {
+            if (!joueursSelectionnes.isEmpty()) {
                 String sqlJoueur = "INSERT INTO joueur_equipe (joueur_id, equipe_id) VALUES (?, ?)";
                 try (PreparedStatement pstJoueur = con.prepareStatement(sqlJoueur)) {
                     for (Joueur joueur : joueursSelectionnes) {
@@ -297,15 +286,10 @@ public class VueEquipe extends BaseLayout {
             
             con.commit();
             
-            if (equipeId > 0) {
-                Notification.show("Équipe ajoutée avec succès !", 3000, Notification.Position.TOP_CENTER)
-                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                viderFormulaire();
-                chargerEquipes();
-            } else {
-                Notification.show("Échec de l'ajout de l'équipe.", 3000, Notification.Position.TOP_CENTER)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
-            }
+            Notification.show("Équipe ajoutée avec succès ! (ID: " + equipeId + ")", 3000, Notification.Position.TOP_CENTER)
+                .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            viderFormulaire();
+            chargerEquipes();
             
         } catch (SQLException ex) {
             Notification.show("Erreur lors de l'ajout : " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER)
