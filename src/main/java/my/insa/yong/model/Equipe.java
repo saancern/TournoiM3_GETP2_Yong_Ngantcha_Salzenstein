@@ -11,6 +11,7 @@ import java.util.List;
 import my.insa.yong.utils.database.ClasseMiroir;
 
 /**
+ * allo
  * Représente une équipe dans le système
  * @author saancern
  */
