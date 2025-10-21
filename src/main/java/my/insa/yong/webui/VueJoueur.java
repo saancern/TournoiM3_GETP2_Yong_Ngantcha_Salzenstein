@@ -22,6 +22,7 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
 import my.insa.yong.model.Joueur;
+import my.insa.yong.model.UserSession;
 import my.insa.yong.utils.database.ConnectionPool;
 import my.insa.yong.webui.components.BaseLayout;
 
@@ -350,7 +351,7 @@ public class VueJoueur extends BaseLayout {
             // Sauvegarder en utilisant ClasseMiroir
             int newId = nouveauJoueur.saveInDB(con);
             
-            Notification.show("Joueur ajouté avec succès ! (ID: " + newId + ")", 3000, Notification.Position.TOP_CENTER)
+            Notification.show("Joueur ajouté avec succès dans " + UserSession.getCurrentTournoiName() + " ! (ID: " + newId + ")", 3000, Notification.Position.TOP_CENTER)
                 .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             viderFormulaire();
             chargerJoueurs();

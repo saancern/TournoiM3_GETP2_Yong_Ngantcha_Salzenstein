@@ -48,6 +48,15 @@ public class GestionBdD {
                 + " date_creation date not null"
                 + ") ",
             
+            // Table tournoi (aucune dépendance)
+            "create table tournoi ( "
+                + ConnectionPool.sqlForGeneratedKeys(con, "id") + ","
+                + " nom_tournoi varchar(255) not null,"
+                + " sport varchar(100) not null,"
+                + " nombre_terrains int not null,"
+                + " nombre_joueurs_par_equipe int not null"
+                + ") ",
+            
             // Table joueur_equipe (sans foreign keys d'abord)
             "create table joueur_equipe ( "
                 + " joueur_id int not null,"
@@ -65,7 +74,7 @@ public class GestionBdD {
                 + " foreign key (equipe_id) references equipe(id) on delete cascade"
         };
         
-        String[] tableNames = {"utilisateur", "joueur", "equipe", "joueur_equipe"};
+        String[] tableNames = {"utilisateur", "joueur", "equipe", "tournoi", "joueur_equipe"};
         String[] constraintNames = {"fk_joueur_equipe_joueur", "fk_joueur_equipe_equipe"};
         
         boolean oldAutoCommit = con.getAutoCommit();
@@ -111,6 +120,10 @@ public class GestionBdD {
                     System.out.println("=== Résumé ===");
                     System.out.println("Schema créé avec " + successCount + "/" + tableNames.length + " tables.");
                     System.out.println("Contraintes ajoutées: " + constraintCount + "/" + constraintNames.length + ".");
+                    
+                    // Créer le tournoi par défaut avec ID=1
+                    creerTournoiParDefaut(con);
+                    
                 } else {
                     con.rollback();
                     System.err.println("Aucune table n'a pu être créée.");
@@ -260,6 +273,32 @@ public class GestionBdD {
             
         } catch (SQLException ex) {
             throw new Error(ex);
+        }
+    }
+    
+    /**
+     * Crée le tournoi par défaut avec ID=1 s'il n'existe pas déjà
+     * @param con La connexion à la base de données
+     * @throws SQLException En cas d'erreur SQL
+     */
+    private static void creerTournoiParDefaut(Connection con) throws SQLException {
+        // Vérifier si le tournoi ID=1 existe déjà
+        String checkSql = "SELECT COUNT(*) FROM tournoi WHERE id = 1";
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery(checkSql)) {
+            
+            if (rs.next() && rs.getInt(1) == 0) {
+                // Le tournoi ID=1 n'existe pas, le créer
+                String insertSql = "INSERT INTO tournoi (id, nom_tournoi, sport, nombre_terrains, nombre_joueurs_par_equipe) " +
+                                 "VALUES (1, 'Tournoi', 'Foot', 10, 11)";
+                
+                try (Statement insertSt = con.createStatement()) {
+                    insertSt.executeUpdate(insertSql);
+                    System.out.println("Tournoi par défaut créé avec succès (ID=1, 'Tournoi', 'Foot', 10, 11)");
+                }
+            } else {
+                System.out.println("Tournoi par défaut (ID=1) existe déjà");
+            }
         }
     }
 

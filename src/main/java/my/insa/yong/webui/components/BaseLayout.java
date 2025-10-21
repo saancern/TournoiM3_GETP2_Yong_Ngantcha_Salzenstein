@@ -17,6 +17,7 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 import my.insa.yong.model.UserSession;
 import my.insa.yong.webui.VueEquipe;
 import my.insa.yong.webui.VueJoueur;
+import my.insa.yong.webui.VueParametres;
 import my.insa.yong.webui.VuePrincipale;
 
 /**
@@ -34,7 +35,8 @@ public class BaseLayout extends AppLayout {
     }
     
     private void createHeader() {
-        H1 appName = new H1("Gestion de Tournoi");
+        String tournoiName = UserSession.getCurrentTournoiName();
+        H1 appName = new H1("Gestion de " + tournoiName);
         appName.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.Margin.NONE);
         
         HorizontalLayout header = new HorizontalLayout();
@@ -47,13 +49,16 @@ public class BaseLayout extends AppLayout {
             // Informations utilisateur dans le header
             String username = UserSession.getCurrentUsername();
             String role = UserSession.getCurrentUserRoleDisplay();
+            String tournoi = UserSession.getCurrentTournoiName();
+            String sport = UserSession.getCurrentTournoiSport();
             
-            Span userInfo = new Span("Bonjour " + username + " (" + role + ")");
+            Span userInfo = new Span("Bonjour " + username + " (" + role + ") | Sport: " + sport);
             userInfo.addClassNames(LumoUtility.FontWeight.MEDIUM);
             
             // Bouton de déconnexion
             Button logoutBtn = new Button("Déconnexion", e -> {
                 UserSession.logout();
+                UserSession.clearCurrentTournoi(); // Effacer aussi le tournoi actuel
                 getUI().ifPresent(ui -> ui.getPage().reload());
             });
             logoutBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
@@ -90,6 +95,11 @@ public class BaseLayout extends AppLayout {
         nav.addItem(new SideNavItem("Accueil", VuePrincipale.class));
         nav.addItem(new SideNavItem("Joueurs", VueJoueur.class));
         nav.addItem(new SideNavItem("Équipes", VueEquipe.class));
+        
+        // Paramètres réservés aux administrateurs
+        if (UserSession.adminConnected()) {
+            nav.addItem(new SideNavItem("Paramètres", VueParametres.class));
+        }
         
         // Informations sur le rôle de l'utilisateur
         H2 roleTitle = new H2("Privilèges");
