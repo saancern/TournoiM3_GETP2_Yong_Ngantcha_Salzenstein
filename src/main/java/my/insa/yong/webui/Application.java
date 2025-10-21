@@ -10,8 +10,8 @@ import org.springframework.boot.web.servlet.support.SpringBootServletInitializer
 import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.theme.Theme;
 
-import my.insa.yong.utils.database.ConnectionSimpleSGBD;
 import my.insa.yong.model.GestionBdD;
+import my.insa.yong.utils.database.ConnectionSimpleSGBD;
 
 @SpringBootApplication
 @Theme("default")
