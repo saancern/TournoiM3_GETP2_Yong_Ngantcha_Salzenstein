@@ -49,7 +49,7 @@ public class BaseLayout extends AppLayout {
             // Informations utilisateur dans le header
             String username = UserSession.getCurrentUsername();
             String role = UserSession.getCurrentUserRoleDisplay();
-            String tournoi = UserSession.getCurrentTournoiName();
+            //String tournoi = UserSession.getCurrentTournoiName();
             String sport = UserSession.getCurrentTournoiSport();
             
             Span userInfo = new Span("Bonjour " + username + " (" + role + ") | Sport: " + sport);

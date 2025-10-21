@@ -210,6 +210,46 @@ public class UserSession implements Serializable {
     }
     
     /**
+     * Obtenir le nombre de joueurs par équipe du tournoi actuel
+     */
+    public static int getCurrentTournoiNombreJoueursParEquipe() {
+        try (Connection con = ConnectionPool.getConnection()) {
+            UserSession session = getOrCreate();
+            if (session.currentTournoiId != null) {
+                Parametre tournoi = Parametre.getParametreParId(con, session.currentTournoiId);
+                if (tournoi != null) {
+                    return tournoi.getNombreJoueursParEquipe();
+                }
+            }
+            // Fallback vers le tournoi par défaut
+            Parametre tournoiDefaut = Parametre.getParametreParId(con, 1);
+            return tournoiDefaut != null ? tournoiDefaut.getNombreJoueursParEquipe() : 11;
+        } catch (SQLException ex) {
+            return 11; // Valeur par défaut en cas d'erreur
+        }
+    }
+    
+    /**
+     * Obtenir le nombre de terrains du tournoi actuel
+     */
+    public static int getCurrentTournoiNombreTerrains() {
+        try (Connection con = ConnectionPool.getConnection()) {
+            UserSession session = getOrCreate();
+            if (session.currentTournoiId != null) {
+                Parametre tournoi = Parametre.getParametreParId(con, session.currentTournoiId);
+                if (tournoi != null) {
+                    return tournoi.getNombreTerrains();
+                }
+            }
+            // Fallback vers le tournoi par défaut
+            Parametre tournoiDefaut = Parametre.getParametreParId(con, 1);
+            return tournoiDefaut != null ? tournoiDefaut.getNombreTerrains() : 10;
+        } catch (SQLException ex) {
+            return 10; // Valeur par défaut en cas d'erreur
+        }
+    }
+    
+    /**
      * Charger le tournoi par défaut (ID=1) depuis la base de données
      */
     private static void chargerTournoiParDefaut(UserSession session) {

@@ -13,8 +13,8 @@ import java.util.Set;
 
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.checkbox.CheckboxGroup;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
@@ -28,6 +28,7 @@ import com.vaadin.flow.router.Route;
 
 import my.insa.yong.model.Equipe;
 import my.insa.yong.model.Joueur;
+import my.insa.yong.model.UserSession;
 import my.insa.yong.utils.database.ConnectionPool;
 import my.insa.yong.webui.components.BaseLayout;
 
@@ -37,7 +38,7 @@ public class VueEquipe extends BaseLayout {
 
     private TextField nomEquipeField;
     private DatePicker dateCreationField;
-    private CheckboxGroup<Joueur> joueursCheckbox;
+    private MultiSelectComboBox<Joueur> joueursComboBox;
     private Button ajouterButton;
     private Button modifierButton;
     private Button supprimerButton;
@@ -142,12 +143,12 @@ public class VueEquipe extends BaseLayout {
         dateCreationField.setValue(LocalDate.now()); // Date par défaut
 
         // Sélection des joueurs
-        joueursCheckbox = new CheckboxGroup<>();
-        joueursCheckbox.setLabel("Sélectionner les joueurs");
-        joueursCheckbox.setItemLabelGenerator(joueur -> 
+        joueursComboBox = new MultiSelectComboBox<>();
+        joueursComboBox.setLabel("Sélectionner les joueurs");
+        joueursComboBox.setItemLabelGenerator(joueur -> 
             String.format("%s %s (%d ans)", joueur.getPrenom(), joueur.getNom(), joueur.getAge()));
-        joueursCheckbox.addClassName("form-field");
-        joueursCheckbox.setWidthFull();
+        joueursComboBox.addClassName("form-field");
+        joueursComboBox.setWidthFull();
 
         // Bouton de soumission
         submitButton = new Button("Valider");
@@ -157,7 +158,7 @@ public class VueEquipe extends BaseLayout {
         submitButton.setWidthFull();
 
         leftPanel.add(titreForm, operationButtons, equipeSelector, nomEquipeField, 
-                     dateCreationField, joueursCheckbox, submitButton);
+                     dateCreationField, joueursComboBox, submitButton);
     }
 
     private void construireTableau(VerticalLayout rightPanel) {
@@ -171,8 +172,11 @@ public class VueEquipe extends BaseLayout {
         equipesGrid.addColumn(Equipe::getDateCreation).setHeader("Date de création").setAutoWidth(true);
         equipesGrid.addColumn(equipe -> {
             List<Joueur> joueurs = chargerJoueursEquipe(equipe.getId());
-            return joueurs.size() + " joueur(s)";
-        }).setHeader("Nombre de joueurs").setAutoWidth(true);
+            return joueurs.stream()
+                    .map(j -> j.getPrenom() + " " + j.getNom())
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("Aucun joueur");
+        }).setHeader("Joueurs").setAutoWidth(true);
         
         equipesGrid.setSizeFull();
         equipesGrid.addClassName("players-grid");
@@ -212,13 +216,13 @@ public class VueEquipe extends BaseLayout {
         // Charger les joueurs de l'équipe
         List<Joueur> joueursEquipe = chargerJoueursEquipe(equipe.getId());
         Set<Joueur> joueursSelectionnes = new HashSet<>(joueursEquipe);
-        joueursCheckbox.setValue(joueursSelectionnes);
+        joueursComboBox.setValue(joueursSelectionnes);
     }
 
     private void viderFormulaire() {
         nomEquipeField.clear();
         dateCreationField.setValue(LocalDate.now());
-        joueursCheckbox.clear();
+        joueursComboBox.clear();
     }
 
     private void chargerEquipesPourSelection() {
@@ -261,10 +265,19 @@ public class VueEquipe extends BaseLayout {
     private void ajouterEquipe() {
         String nomEquipe = nomEquipeField.getValue().trim();
         LocalDate dateCreation = dateCreationField.getValue();
-        Set<Joueur> joueursSelectionnes = joueursCheckbox.getValue();
+        Set<Joueur> joueursSelectionnes = joueursComboBox.getValue();
 
         if (nomEquipe.isEmpty() || dateCreation == null) {
             Notification.show("Veuillez remplir tous les champs correctement.", 3000, Notification.Position.TOP_CENTER)
+                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            return;
+        }
+        
+        // Validation du nombre de joueurs selon le tournoi actuel
+        int maxJoueurs = UserSession.getCurrentTournoiNombreJoueursParEquipe();
+        if (joueursSelectionnes.size() > maxJoueurs) {
+            Notification.show("Trop de joueurs sélectionnés. Maximum autorisé : " + maxJoueurs + " joueurs pour ce tournoi.", 
+                             3000, Notification.Position.TOP_CENTER)
                 .addThemeVariants(NotificationVariant.LUMO_ERROR);
             return;
         }
@@ -314,10 +327,19 @@ public class VueEquipe extends BaseLayout {
 
         String nomEquipe = nomEquipeField.getValue().trim();
         LocalDate dateCreation = dateCreationField.getValue();
-        Set<Joueur> joueursSelectionnes = joueursCheckbox.getValue();
+        Set<Joueur> joueursSelectionnes = joueursComboBox.getValue();
 
         if (nomEquipe.isEmpty() || dateCreation == null) {
             Notification.show("Veuillez remplir tous les champs correctement.", 3000, Notification.Position.TOP_CENTER)
+                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            return;
+        }
+        
+        // Validation du nombre de joueurs selon le tournoi actuel
+        int maxJoueurs = UserSession.getCurrentTournoiNombreJoueursParEquipe();
+        if (joueursSelectionnes.size() > maxJoueurs) {
+            Notification.show("Trop de joueurs sélectionnés. Maximum autorisé : " + maxJoueurs + " joueurs pour ce tournoi.", 
+                             3000, Notification.Position.TOP_CENTER)
                 .addThemeVariants(NotificationVariant.LUMO_ERROR);
             return;
         }
@@ -460,7 +482,7 @@ public class VueEquipe extends BaseLayout {
                     joueurs.add(joueur);
                 }
             }
-            joueursCheckbox.setItems(joueurs);
+            joueursComboBox.setItems(joueurs);
         } catch (SQLException ex) {
             Notification.show("Erreur lors du chargement des joueurs : " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER)
                 .addThemeVariants(NotificationVariant.LUMO_ERROR);
