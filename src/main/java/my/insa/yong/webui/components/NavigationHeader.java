@@ -45,7 +45,7 @@ public class NavigationHeader extends VerticalLayout {
         leftSection.add(logo);
         
         // Navigation principale (visible seulement si connecté)
-        if (UserSession.isUserLoggedIn()) {
+        if (UserSession.userConnected()) {
             HorizontalLayout navLinks = new HorizontalLayout();
             navLinks.setSpacing(true);
             navLinks.addClassName("nav-links");
@@ -72,7 +72,7 @@ public class NavigationHeader extends VerticalLayout {
         rightSection.setSpacing(true);
         rightSection.setAlignItems(Alignment.CENTER);
         
-        if (UserSession.isUserLoggedIn()) {
+        if (UserSession.userConnected()) {
             // Informations utilisateur
             String username = UserSession.getCurrentUsername();
             String role = UserSession.getCurrentUserRoleDisplay();

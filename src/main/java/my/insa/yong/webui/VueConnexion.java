@@ -20,7 +20,7 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
 import my.insa.yong.model.UserSession;
-import my.insa.yong.utils.database.ConnectionSimpleSGBD;
+import my.insa.yong.utils.database.ConnectionPool;
 
 /**
  * Page de connexion/inscription en français
@@ -105,7 +105,7 @@ public class VueConnexion extends VerticalLayout {
         String surnom = champSurnom.getValue().trim();
         String motDePasse = champMotDePasse.getValue();
 
-        try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
+        try (Connection con = ConnectionPool.getConnection()) {
             String sql = "SELECT id, surnom, pass, isAdmin FROM utilisateur WHERE surnom = ?";
             try (PreparedStatement pst = con.prepareStatement(sql)) {
                 pst.setString(1, surnom);
@@ -168,7 +168,7 @@ public class VueConnexion extends VerticalLayout {
     }
 
     private void creerUtilisateur(String surnom, String motDePasse, boolean isAdmin) {
-        try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
+        try (Connection con = ConnectionPool.getConnection()) {
             // Vérifier si l'utilisateur existe déjà
             String sqlVerif = "SELECT COUNT(*) FROM utilisateur WHERE surnom = ?";
             try (PreparedStatement pstVerif = con.prepareStatement(sqlVerif)) {

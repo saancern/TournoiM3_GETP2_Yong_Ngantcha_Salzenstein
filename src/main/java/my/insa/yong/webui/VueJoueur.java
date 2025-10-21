@@ -22,7 +22,7 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
 import my.insa.yong.model.Joueur;
-import my.insa.yong.utils.database.ConnectionSimpleSGBD;
+import my.insa.yong.utils.database.ConnectionPool;
 import my.insa.yong.webui.components.BaseLayout;
 
 @Route("joueur")
@@ -49,6 +49,12 @@ public class VueJoueur extends BaseLayout {
     private OperationMode currentMode = OperationMode.AJOUTER;
 
     public VueJoueur() {
+        // Wrapper avec gradient background
+        VerticalLayout wrapper = new VerticalLayout();
+        wrapper.setSizeFull();
+        wrapper.addClassName("app-container");
+        wrapper.setPadding(true);
+        
         // Créer le layout principal horizontal (gauche/droite)
         HorizontalLayout mainLayout = new HorizontalLayout();
         mainLayout.setSizeFull();
@@ -172,7 +178,8 @@ public class VueJoueur extends BaseLayout {
         mainLayout.setFlexGrow(0, leftPanel);  // Panel gauche taille fixe
         mainLayout.setFlexGrow(1, rightPanel); // Panel droit prend l'espace restant
 
-        this.addToContent(mainLayout);
+        wrapper.add(mainLayout);
+        this.setContent(wrapper);
 
         // Charger les joueurs au démarrage
         chargerJoueurs();
@@ -274,7 +281,7 @@ public class VueJoueur extends BaseLayout {
     private void chargerJoueursSelector() {
         List<Joueur> joueurs = new ArrayList<>();
         
-        try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
+        try (Connection con = ConnectionPool.getConnection()) {
             String sql = "SELECT id, prenom, nom, age, sexe, taille FROM joueur ORDER BY nom, prenom";
             try (PreparedStatement pst = con.prepareStatement(sql);
                  ResultSet rs = pst.executeQuery()) {
@@ -336,7 +343,7 @@ public class VueJoueur extends BaseLayout {
 
         int age = ageDouble.intValue();
 
-        try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
+        try (Connection con = ConnectionPool.getConnection()) {
             // Créer un nouveau joueur (id = -1)
             Joueur nouveauJoueur = new Joueur(prenom, nom, age, sexe, taille);
             
@@ -380,7 +387,7 @@ public class VueJoueur extends BaseLayout {
 
         int age = ageDouble.intValue();
 
-        try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
+        try (Connection con = ConnectionPool.getConnection()) {
             String sql = "UPDATE joueur SET prenom = ?, nom = ?, age = ?, sexe = ?, taille = ? WHERE id = ?";
             try (PreparedStatement pst = con.prepareStatement(sql)) {
                 pst.setString(1, prenom);
@@ -419,7 +426,7 @@ public class VueJoueur extends BaseLayout {
             return;
         }
 
-        try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
+        try (Connection con = ConnectionPool.getConnection()) {
             String sql = "DELETE FROM joueur WHERE id = ?";
             try (PreparedStatement pst = con.prepareStatement(sql)) {
                 pst.setInt(1, joueurSelectionne.getId());
@@ -450,7 +457,7 @@ public class VueJoueur extends BaseLayout {
     private void chargerJoueurs() {
         List<Joueur> joueurs = new ArrayList<>();
         
-        try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
+        try (Connection con = ConnectionPool.getConnection()) {
             String sql = "SELECT * FROM joueur ORDER BY nom, prenom";
             try (PreparedStatement pst = con.prepareStatement(sql);
                  ResultSet rs = pst.executeQuery()) {

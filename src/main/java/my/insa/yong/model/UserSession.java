@@ -1,109 +1,122 @@
 package my.insa.yong.model;
 
 import com.vaadin.flow.server.VaadinSession;
+import java.io.Serializable;
+import java.util.Optional;
 
 /**
- * Session management for tracking logged-in users
+ * Modern Vaadin session management for user authentication
  * @author saancern
  */
-public class UserSession {
+public class UserSession implements Serializable {
     
-    private static final String USER_SESSION_KEY = "current_user";
-    private static final String USER_ID_KEY = "user_id";
-    private static final String USERNAME_KEY = "username";
-    private static final String IS_ADMIN_KEY = "is_admin";
+    private static final long serialVersionUID = 1L;
+    
+    private Utilisateur curUser;
     
     /**
-     * Set the current logged-in user in the session
+     * Get or create the current session info
      */
-    public static void setCurrentUser(int userId, String username, boolean isAdmin) {
-        VaadinSession session = VaadinSession.getCurrent();
-        if (session != null) {
-            session.setAttribute(USER_ID_KEY, userId);
-            session.setAttribute(USERNAME_KEY, username);
-            session.setAttribute(IS_ADMIN_KEY, isAdmin);
-            session.setAttribute(USER_SESSION_KEY, true);
+    public static UserSession getOrCreate() {
+        VaadinSession curSession = VaadinSession.getCurrent();
+        UserSession curInfo = curSession.getAttribute(UserSession.class);
+        if (curInfo == null) {
+            curInfo = new UserSession();
+            curSession.setAttribute(UserSession.class, curInfo);
+        }
+        return curInfo;
+    }
+    
+    /**
+     * Login a user
+     */
+    public static void login(Utilisateur u) {
+        UserSession curInfo = getOrCreate();
+        curInfo.curUser = u;
+    }
+    
+    /**
+     * Logout the current user
+     */
+    public static void logout() {
+        UserSession curInfo = getOrCreate();
+        curInfo.curUser = null;
+    }
+    
+    /**
+     * Get the current user as Optional
+     */
+    public static Optional<Utilisateur> curUser() {
+        Utilisateur u = getOrCreate().curUser;
+        if (u == null) {
+            return Optional.empty();
+        } else {
+            return Optional.of(u);
         }
     }
     
     /**
-     * Check if a user is currently logged in
+     * Check if a user is connected
      */
-    public static boolean isUserLoggedIn() {
-        VaadinSession session = VaadinSession.getCurrent();
-        if (session != null) {
-            Boolean loggedIn = (Boolean) session.getAttribute(USER_SESSION_KEY);
-            return loggedIn != null && loggedIn;
-        }
-        return false;
+    public static boolean userConnected() {
+        return curUser().isPresent();
     }
     
     /**
-     * Get the current user's ID
+     * Check if an admin is connected
+     */
+    public static boolean adminConnected() {
+        Optional<Utilisateur> curUser = curUser();
+        if (curUser.isEmpty()) {
+            return false;
+        } else {
+            return curUser.get().getRole() == 1;
+        }
+    }
+    
+    /**
+     * Get current user ID
      */
     public static Integer getCurrentUserId() {
-        VaadinSession session = VaadinSession.getCurrent();
-        if (session != null && isUserLoggedIn()) {
-            return (Integer) session.getAttribute(USER_ID_KEY);
-        }
-        return null;
+        Optional<Utilisateur> user = curUser();
+        return user.map(Utilisateur::getId).orElse(null);
     }
     
     /**
-     * Get the current user's username
+     * Get current username
      */
     public static String getCurrentUsername() {
-        VaadinSession session = VaadinSession.getCurrent();
-        if (session != null && isUserLoggedIn()) {
-            return (String) session.getAttribute(USERNAME_KEY);
-        }
-        return null;
+        Optional<Utilisateur> user = curUser();
+        return user.map(Utilisateur::getSurnom).orElse(null);
     }
     
     /**
-     * Check if the current user is an admin
-     */
-    public static boolean isCurrentUserAdmin() {
-        VaadinSession session = VaadinSession.getCurrent();
-        if (session != null && isUserLoggedIn()) {
-            Boolean isAdmin = (Boolean) session.getAttribute(IS_ADMIN_KEY);
-            return isAdmin != null && isAdmin;
-        }
-        return false;
-    }
-    
-    /**
-     * Get the current user's role as a display string
+     * Get current user role as display string
      */
     public static String getCurrentUserRoleDisplay() {
-        if (isUserLoggedIn()) {
-            return isCurrentUserAdmin() ? "Administrateur" : "Utilisateur";
+        if (userConnected()) {
+            return adminConnected() ? "Administrateur" : "Utilisateur";
         }
         return "Invité";
     }
     
     /**
-     * Clear the current user session (logout)
-     */
-    public static void clearCurrentUser() {
-        VaadinSession session = VaadinSession.getCurrent();
-        if (session != null) {
-            session.setAttribute(USER_SESSION_KEY, null);
-            session.setAttribute(USER_ID_KEY, null);
-            session.setAttribute(USERNAME_KEY, null);
-            session.setAttribute(IS_ADMIN_KEY, null);
-        }
-    }
-    
-    /**
-     * Get a complete user info summary
+     * Get user summary
      */
     public static String getCurrentUserSummary() {
-        if (isUserLoggedIn()) {
+        if (userConnected()) {
             String username = getCurrentUsername();
             String role = getCurrentUserRoleDisplay();
             return String.format("%s (%s)", username, role);
         }
         return "Aucun utilisateur connecté";
+    }
+    
+    /**
+     * Set current user (for backward compatibility)
+     */
+    public static void setCurrentUser(int userId, String username, boolean isAdmin) {
+        Utilisateur user = new Utilisateur(userId, username, "", isAdmin);
+        login(user);
     }
 }

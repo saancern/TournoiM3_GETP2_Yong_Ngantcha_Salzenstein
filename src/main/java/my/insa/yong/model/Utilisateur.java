@@ -60,6 +60,14 @@ public class Utilisateur {
         this.isAdmin = isAdmin;
     }
     
+    /**
+     * Get user role as integer (0 = user, 1 = admin)
+     * Compatible with SessionInfo pattern
+     */
+    public int getRole() {
+        return isAdmin ? 1 : 0;
+    }
+    
     @Override
     public String toString() {
         return "Utilisateur{" +

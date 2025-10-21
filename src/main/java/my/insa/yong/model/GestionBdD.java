@@ -5,7 +5,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import my.insa.yong.utils.database.ConnectionSimpleSGBD;
+import my.insa.yong.utils.database.ConnectionPool;
 
 /**
  *
@@ -25,7 +25,7 @@ public class GestionBdD {
         String[] createTableQueries = {
             // Table utilisateur (aucune dépendance)
             "create table utilisateur ( "
-                + ConnectionSimpleSGBD.sqlForGeneratedKeys(con, "id") + ","
+                + ConnectionPool.sqlForGeneratedKeys(con, "id") + ","
                 + " surnom varchar(30) not null unique,"
                 + " pass varchar(20) not null,"
                 + " isAdmin boolean not null default false "
@@ -33,7 +33,7 @@ public class GestionBdD {
             
             // Table joueur (aucune dépendance)
             "create table joueur ( "
-                + ConnectionSimpleSGBD.sqlForGeneratedKeys(con, "id") + ","
+                + ConnectionPool.sqlForGeneratedKeys(con, "id") + ","
                 + " prenom varchar(50) not null,"
                 + " nom varchar(50) not null,"
                 + " taille double precision not null,"
@@ -43,7 +43,7 @@ public class GestionBdD {
             
             // Table equipe (aucune dépendance)
             "create table equipe ( "
-                + ConnectionSimpleSGBD.sqlForGeneratedKeys(con, "id") + ","
+                + ConnectionPool.sqlForGeneratedKeys(con, "id") + ","
                 + " nom_equipe varchar(50) not null,"
                 + " date_creation date not null"
                 + ") ",
@@ -248,7 +248,7 @@ public class GestionBdD {
      * @param args
      */
     public static void main(String[] args) {
-        try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
+        try (Connection con = ConnectionPool.getConnection()) {
             System.out.println("=== AVANT RECONSTRUCTION ===");
             checkSchemaStatus(con);
             

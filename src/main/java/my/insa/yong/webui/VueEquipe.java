@@ -28,7 +28,7 @@ import com.vaadin.flow.router.Route;
 
 import my.insa.yong.model.Equipe;
 import my.insa.yong.model.Joueur;
-import my.insa.yong.utils.database.ConnectionSimpleSGBD;
+import my.insa.yong.utils.database.ConnectionPool;
 import my.insa.yong.webui.components.BaseLayout;
 
 @Route("equipe")
@@ -53,6 +53,12 @@ public class VueEquipe extends BaseLayout {
     private OperationMode currentMode = OperationMode.AJOUTER;
 
     public VueEquipe() {
+        // Wrapper avec gradient background
+        VerticalLayout wrapper = new VerticalLayout();
+        wrapper.setSizeFull();
+        wrapper.addClassName("app-container");
+        wrapper.setPadding(true);
+        
         // Layout principal avec deux colonnes
         HorizontalLayout mainLayout = new HorizontalLayout();
         mainLayout.setSizeFull();
@@ -77,7 +83,8 @@ public class VueEquipe extends BaseLayout {
         construireTableau(rightPanel);
 
         mainLayout.add(leftPanel, rightPanel);
-        this.addToContent(mainLayout);
+        wrapper.add(mainLayout);
+        this.setContent(wrapper);
 
         // Charger les données initiales
         chargerEquipes();
@@ -216,7 +223,7 @@ public class VueEquipe extends BaseLayout {
 
     private void chargerEquipesPourSelection() {
         List<Equipe> equipes = new ArrayList<>();
-        try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
+        try (Connection con = ConnectionPool.getConnection()) {
             String sql = "SELECT id, nom_equipe, date_creation FROM equipe ORDER BY nom_equipe";
             try (PreparedStatement pst = con.prepareStatement(sql);
                  ResultSet rs = pst.executeQuery()) {
@@ -262,7 +269,7 @@ public class VueEquipe extends BaseLayout {
             return;
         }
 
-        try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
+        try (Connection con = ConnectionPool.getConnection()) {
             con.setAutoCommit(false);
             
             // Créer une nouvelle équipe (id = -1)
@@ -315,7 +322,7 @@ public class VueEquipe extends BaseLayout {
             return;
         }
 
-        try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
+        try (Connection con = ConnectionPool.getConnection()) {
             con.setAutoCommit(false);
             
             // Modifier l'équipe
@@ -375,7 +382,7 @@ public class VueEquipe extends BaseLayout {
             return;
         }
 
-        try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
+        try (Connection con = ConnectionPool.getConnection()) {
             con.setAutoCommit(false);
             
             // Supprimer d'abord les joueurs de l'équipe
@@ -413,7 +420,7 @@ public class VueEquipe extends BaseLayout {
 
     private void chargerEquipes() {
         List<Equipe> equipes = new ArrayList<>();
-        try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
+        try (Connection con = ConnectionPool.getConnection()) {
             String sql = "SELECT * FROM equipe ORDER BY nom_equipe, date_creation";
             try (PreparedStatement pst = con.prepareStatement(sql);
                  ResultSet rs = pst.executeQuery()) {
@@ -436,7 +443,7 @@ public class VueEquipe extends BaseLayout {
 
     private void chargerJoueurs() {
         List<Joueur> joueurs = new ArrayList<>();
-        try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
+        try (Connection con = ConnectionPool.getConnection()) {
             String sql = "SELECT id, prenom, nom, age, sexe, taille FROM joueur ORDER BY nom, prenom";
             try (PreparedStatement pst = con.prepareStatement(sql);
                  ResultSet rs = pst.executeQuery()) {
@@ -462,7 +469,7 @@ public class VueEquipe extends BaseLayout {
 
     private List<Joueur> chargerJoueursEquipe(int equipeId) {
         List<Joueur> joueurs = new ArrayList<>();
-        try (Connection con = ConnectionSimpleSGBD.defaultCon()) {
+        try (Connection con = ConnectionPool.getConnection()) {
             String sql = "SELECT j.id, j.prenom, j.nom, j.age, j.sexe, j.taille " +
                         "FROM joueur j " +
                         "INNER JOIN joueur_equipe je ON j.id = je.joueur_id " +

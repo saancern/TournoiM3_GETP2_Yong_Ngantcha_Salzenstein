@@ -4,6 +4,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
@@ -22,6 +23,13 @@ import my.insa.yong.webui.components.BaseLayout;
 public class VuePrincipale extends BaseLayout {
 
     public VuePrincipale() {
+        // Wrapper avec gradient background pour centrer le contenu
+        VerticalLayout wrapper = new VerticalLayout();
+        wrapper.setSizeFull();
+        wrapper.addClassName("app-container");
+        wrapper.setJustifyContentMode(VerticalLayout.JustifyContentMode.CENTER);
+        wrapper.setDefaultHorizontalComponentAlignment(Alignment.CENTER);
+        
         // Container principal pour le contenu
         VerticalLayout container = new VerticalLayout();
         container.addClassName("form-container");
@@ -30,7 +38,7 @@ public class VuePrincipale extends BaseLayout {
         container.setAlignItems(Alignment.CENTER);
         container.setSpacing(true);
         
-        if (UserSession.isUserLoggedIn()) {
+        if (UserSession.userConnected()) {
             // Contenu pour utilisateur connecté
             construireInterfaceUtilisateurConnecte(container);
         } else {
@@ -38,10 +46,10 @@ public class VuePrincipale extends BaseLayout {
             construireInterfaceUtilisateurNonConnecte(container);
         }
         
-        // Configurer l'alignement du contenu
-        this.setContentAlignment(Alignment.CENTER);
-        this.setContentJustifyMode(JustifyContentMode.CENTER);
-        this.addToContent(container);
+        wrapper.add(container);
+        
+        // Ajouter le wrapper dans le AppLayout
+        this.setContent(wrapper);
     }
     
     private void construireInterfaceUtilisateurNonConnecte(VerticalLayout container) {
@@ -71,7 +79,7 @@ public class VuePrincipale extends BaseLayout {
         
         // Informations sur le niveau d'accès
         H3 infoAcces = new H3();
-        if (UserSession.isCurrentUserAdmin()) {
+        if (UserSession.adminConnected()) {
             infoAcces.setText("Mode Administrateur - Accès complet");
             infoAcces.addClassName("text-warning");
         } else {
@@ -86,7 +94,7 @@ public class VuePrincipale extends BaseLayout {
         boutonChangerUtilisateur.addClassName("btn-primary");
         boutonChangerUtilisateur.addClickListener(e -> {
             // Déconnecter l'utilisateur actuel
-            UserSession.clearCurrentUser();
+            UserSession.logout();
             // Rafraîchir la page pour afficher l'interface de connexion
             getUI().ifPresent(ui -> ui.getPage().reload());
         });
