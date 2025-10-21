@@ -1,8 +1,8 @@
 package my.insa.yong.vaadin.utils;
 
 import com.vaadin.flow.component.Component;
-import com.vaadin.flow.component.html.Image;
-import com.vaadin.flow.server.StreamResource;
+//import com.vaadin.flow.component.html.Image;
+//import com.vaadin.flow.server.StreamResource;
 import java.awt.Color;
 
 /**

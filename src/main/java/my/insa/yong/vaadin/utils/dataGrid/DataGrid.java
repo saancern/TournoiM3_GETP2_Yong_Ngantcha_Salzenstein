@@ -13,10 +13,10 @@ import java.util.List;
  */
 public class DataGrid extends Grid<List<Object>> {
 
-    private GridDescription gridDes;
+    //private GridDescription gridDes;
 
     public DataGrid(List<List<Object>> datas, GridDescription gridDes) {
-        this.gridDes = gridDes;
+        //this.gridDes = gridDes;
         for (var colDes : gridDes.getColumns()) {
             Column<List<Object>> col;
             if (colDes.getRenderFromRow().isPresent()) {
