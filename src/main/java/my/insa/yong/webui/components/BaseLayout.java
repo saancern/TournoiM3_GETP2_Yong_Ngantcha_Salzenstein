@@ -17,6 +17,7 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 import my.insa.yong.model.UserSession;
 import my.insa.yong.webui.VueEquipe;
 import my.insa.yong.webui.VueJoueur;
+import my.insa.yong.webui.VueMatch;
 import my.insa.yong.webui.VueParametres;
 import my.insa.yong.webui.VuePrincipale;
 
@@ -95,6 +96,7 @@ public class BaseLayout extends AppLayout {
         nav.addItem(new SideNavItem("Accueil", VuePrincipale.class));
         nav.addItem(new SideNavItem("Joueurs", VueJoueur.class));
         nav.addItem(new SideNavItem("Équipes", VueEquipe.class));
+        nav.addItem(new SideNavItem("Matchs", VueMatch.class));
         
         // Paramètres réservés aux administrateurs
         if (UserSession.adminConnected()) {

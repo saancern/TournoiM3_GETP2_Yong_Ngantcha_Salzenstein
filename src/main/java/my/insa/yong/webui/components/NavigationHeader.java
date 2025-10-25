@@ -8,6 +8,7 @@ import com.vaadin.flow.router.RouterLink;
 import my.insa.yong.model.UserSession;
 import my.insa.yong.webui.VueEquipe;
 import my.insa.yong.webui.VueJoueur;
+import my.insa.yong.webui.VueMatch;
 import my.insa.yong.webui.VuePrincipale;
 
 /**
@@ -62,8 +63,12 @@ public class NavigationHeader extends VerticalLayout {
             // Lien Équipe
             RouterLink lienEquipe = new RouterLink("Équipe", VueEquipe.class);
             lienEquipe.addClassName("nav-link");
+
+            // Lien Match
+            RouterLink lienMatch = new RouterLink("Match", VueMatch.class);
+            lienMatch.addClassName("nav-link");
             
-            navLinks.add(lienAccueil, lienJoueur, lienEquipe);
+            navLinks.add(lienAccueil, lienJoueur, lienEquipe, lienMatch);
             leftSection.add(navLinks);
         }
         
