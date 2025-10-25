@@ -9,6 +9,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -17,6 +18,7 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
 import my.insa.yong.model.GestionMatchs;
+import my.insa.yong.model.GestionMatchs.ButeurRow;
 import my.insa.yong.model.GestionMatchs.MatchRow;
 import my.insa.yong.model.UserSession;
 import my.insa.yong.utils.database.ConnectionPool;
@@ -27,6 +29,8 @@ import my.insa.yong.webui.components.BaseLayout;
 public class VueMatch extends BaseLayout {
 
     private final Grid<MatchRow> grid = new Grid<>(MatchRow.class, false);
+    private final Grid<ButeurRow> topGrid = new Grid<>(ButeurRow.class, false);
+
     private final Button nextRoundBtn = new Button("Round suivante");
     private final Button resetBtn = new Button("Réinitialiser les matchs");
     private H2 title;
@@ -43,6 +47,7 @@ public class VueMatch extends BaseLayout {
 
         HorizontalLayout actions = new HorizontalLayout(nextRoundBtn, resetBtn);
 
+        // --- Grille des matchs (ajout des colonnes buteurs) ---
         grid.addColumn(MatchRow::round).setHeader("Round").setAutoWidth(true);
         grid.addColumn(r -> r.poolIndex() == null ? "—" : String.valueOf(r.poolIndex()))
             .setHeader("Pool").setAutoWidth(true);
@@ -54,20 +59,54 @@ public class VueMatch extends BaseLayout {
             .setHeader("Score B").setAutoWidth(true);
         grid.addColumn(MatchRow::winnerName).setHeader("Gagnant").setAutoWidth(true);
         grid.addColumn(r -> r.played() ? "Oui" : "Non").setHeader("Joué").setAutoWidth(true);
+        grid.addColumn(MatchRow::buteursA).setHeader("Buteurs A").setAutoWidth(true).setFlexGrow(1);
+        grid.addColumn(MatchRow::buteursB).setHeader("Buteurs B").setAutoWidth(true).setFlexGrow(1);
         grid.setSizeFull();
 
-        VerticalLayout content = new VerticalLayout(title, actions, grid);
-        content.setSizeFull();
-        setContent(content);
+        // --- Classement des buteurs ---
+        H3 topTitle = new H3("Classement des buteurs");
+        topGrid.addColumn(ButeurRow::joueurNom).setHeader("Joueur").setAutoWidth(true);
+        topGrid.addColumn(ButeurRow::equipeNom).setHeader("Équipe").setAutoWidth(true);
+        topGrid.addColumn(ButeurRow::buts).setHeader("Buts").setAutoWidth(true);
+        topGrid.setAllRowsVisible(true);
+        grid.setSizeFull();
+        topGrid.setSizeFull();
 
+        // Empêche le "min-height:auto" qui casse le flex sous Chrome
+        grid.getElement().getStyle().set("min-height", "0");
+        topGrid.getElement().getStyle().set("min-height", "0");
+
+        // Mets les deux grilles dans un conteneur dédié qui prend tout l’espace
+        VerticalLayout gridsArea = new VerticalLayout(grid, topTitle, topGrid);
+        gridsArea.setPadding(false);
+        gridsArea.setSpacing(true);
+        gridsArea.setSizeFull();
+
+        // 50/50 entre les deux grilles (le H3 ne s’étire pas)
+        gridsArea.setFlexGrow(1, grid);
+        gridsArea.setFlexGrow(0, topTitle);
+        gridsArea.setFlexGrow(1, topGrid);
+
+        // Recompose le layout principal
+        VerticalLayout content = new VerticalLayout(title, actions, gridsArea);
+        content.setSizeFull();
+        content.setFlexGrow(1, gridsArea);      // tout l’espace dispo va à la zone des grilles
+        content.setFlexGrow(0, title, actions); // titres/boutons gardent leur taille
+        setContent(content);
         refresh();
     }
 
     private void refresh() {
         try (Connection con = ConnectionPool.getConnection()) {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+
+            // Matchs + buteurs par match
             List<MatchRow> rows = GestionMatchs.listAllMatches(con, tournoiId);
             grid.setItems(rows);
+
+            // Top buteurs (sur tout le tournoi courant)
+            List<ButeurRow> top = GestionMatchs.getTopScorers(con, tournoiId, 50);
+            topGrid.setItems(top);
 
             Optional<Integer> championId = GestionMatchs.getChampion(con, tournoiId);
             if (championId.isPresent()) {
