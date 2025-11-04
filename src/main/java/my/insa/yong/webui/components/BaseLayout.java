@@ -17,6 +17,7 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 import my.insa.yong.model.UserSession;
 import my.insa.yong.webui.VueEquipe;
 import my.insa.yong.webui.VueJoueur;
+import my.insa.yong.webui.VueJoueur_alle;
 import my.insa.yong.webui.VueMatch;
 import my.insa.yong.webui.VueParametres;
 import my.insa.yong.webui.VuePrincipale;
@@ -94,7 +95,14 @@ public class BaseLayout extends AppLayout {
         
         // Navigation principale
         nav.addItem(new SideNavItem("Accueil", VuePrincipale.class));
-        nav.addItem(new SideNavItem("Joueurs", VueJoueur.class));
+        
+        // Différents modes de vue joueurs selon le rôle
+        if (UserSession.adminConnected()) {
+            nav.addItem(new SideNavItem("Joueurs", VueJoueur.class));
+        } else {
+            nav.addItem(new SideNavItem("Joueurs", VueJoueur_alle.class));
+        }
+        
         nav.addItem(new SideNavItem("Équipes", VueEquipe.class));
         nav.addItem(new SideNavItem("Matchs", VueMatch.class));
         

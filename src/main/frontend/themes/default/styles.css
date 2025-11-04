@@ -500,3 +500,116 @@ vaadin-router-link {
 .text-success {
   color: var(--success-color);
 }
+
+/* ===== AVATAR GALLERY STYLES ===== */
+.avatar-gallery-container {
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+}
+
+.avatar-gallery-title {
+  margin-bottom: 30px;
+  text-align: center;
+  color: var(--lumo-primary-color);
+}
+
+.avatar-gallery-info {
+  font-size: 1.1em;
+  color: var(--lumo-secondary-text-color);
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 20px;
+  padding: 20px;
+  justify-items: center;
+}
+
+.avatar-layout-container {
+  width: 100%;
+  padding: 20px;
+}
+
+.avatar-row {
+  width: 100%;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.avatar-card {
+  border: 1px solid var(--lumo-contrast-20pct);
+  border-radius: var(--lumo-border-radius-m);
+  background-color: var(--lumo-base-color);
+  box-shadow: var(--lumo-box-shadow-xs);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  min-width: 150px;
+  max-width: 180px;
+  padding: var(--lumo-space-m);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--lumo-space-s);
+}
+
+.avatar-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--lumo-box-shadow-m);
+}
+
+.avatar-card-name {
+  margin: 10px 0 5px 0;
+  font-size: 1.1em;
+  text-align: center;
+  color: var(--lumo-body-text-color);
+  line-height: 1.2;
+}
+
+/* ===== AVATAR DIALOG STYLES ===== */
+.avatar-dialog {
+  width: 400px;
+}
+
+.avatar-dialog-content {
+  padding: var(--lumo-space-m);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--lumo-space-s);
+}
+
+.avatar-dialog-title {
+  margin: 15px 0 10px 0;
+}
+
+.avatar-dialog-info-card {
+  padding: var(--lumo-space-m);
+  width: 100%;
+}
+
+.avatar-dialog-info-row {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.avatar-dialog-info-label {
+  font-weight: 600;
+  color: var(--lumo-secondary-text-color);
+}
+
+.avatar-dialog-info-value {
+  color: var(--lumo-body-text-color);
+}
+
+.avatar-dialog-close-button {
+  margin-top: 20px;
+}
