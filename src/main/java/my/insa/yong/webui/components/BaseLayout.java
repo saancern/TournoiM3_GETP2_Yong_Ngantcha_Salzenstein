@@ -1,9 +1,17 @@
 package my.insa.yong.webui.components;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
@@ -14,7 +22,9 @@ import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 
+import my.insa.yong.model.Parametre;
 import my.insa.yong.model.UserSession;
+import my.insa.yong.utils.database.ConnectionPool;
 import my.insa.yong.webui.VueEquipe;
 import my.insa.yong.webui.VueJoueur;
 import my.insa.yong.webui.VueJoueur_alle;
@@ -49,10 +59,23 @@ public class BaseLayout extends AppLayout {
             DrawerToggle toggle = new DrawerToggle();
             toggle.setAriaLabel("Menu toggle");
             
+            // Tournament selector accessible to all users
+            ComboBox<Parametre> tournoiSelector = new ComboBox<>();
+            tournoiSelector.setPlaceholder("Changer de tournoi");
+            tournoiSelector.setWidth("200px");
+            tournoiSelector.setItemLabelGenerator(p -> p.getNomTournoi() + " (" + p.getSport() + ")");
+            tournoiSelector.addValueChangeListener(e -> {
+                if (e.getValue() != null) {
+                    switchTournament(e.getValue());
+                }
+            });
+            
+            // Load tournaments for selector
+            loadTournamentsForSelector(tournoiSelector);
+            
             // Informations utilisateur dans le header
             String username = UserSession.getCurrentUsername();
             String role = UserSession.getCurrentUserRoleDisplay();
-            //String tournoi = UserSession.getCurrentTournoiName();
             String sport = UserSession.getCurrentTournoiSport();
             
             Span userInfo = new Span("Bonjour " + username + " (" + role + ") | Sport: " + sport);
@@ -70,7 +93,7 @@ public class BaseLayout extends AppLayout {
             userSection.setAlignItems(Alignment.CENTER);
             userSection.setSpacing(true);
             
-            header.add(toggle, appName);
+            header.add(toggle, appName, tournoiSelector);
             header.setFlexGrow(1, appName);
             header.add(userSection);
             
@@ -129,5 +152,49 @@ public class BaseLayout extends AppLayout {
         scroller.setClassName(LumoUtility.Padding.SMALL);
         
         addToDrawer(scroller);
+    }
+    
+    private void loadTournamentsForSelector(ComboBox<Parametre> tournoiSelector) {
+        List<Parametre> tournois = new ArrayList<>();
+        try (Connection con = ConnectionPool.getConnection()) {
+            String sql = "SELECT id, nom_tournoi, sport, nombre_terrains, nombre_joueurs_par_equipe FROM tournoi ORDER BY nom_tournoi";
+            try (PreparedStatement pst = con.prepareStatement(sql);
+                 ResultSet rs = pst.executeQuery()) {
+                
+                while (rs.next()) {
+                    Parametre tournoi = new Parametre(
+                        rs.getInt("id"),
+                        rs.getString("nom_tournoi"),
+                        rs.getString("sport"),
+                        rs.getInt("nombre_terrains"),
+                        rs.getInt("nombre_joueurs_par_equipe")
+                    );
+                    tournois.add(tournoi);
+                }
+            }
+            
+            tournoiSelector.setItems(tournois);
+            
+            // Set current tournament as selected
+            Integer currentId = UserSession.getCurrentTournoiId().orElse(null);
+            if (currentId != null) {
+                tournois.stream()
+                    .filter(t -> Integer.valueOf(t.getId()).equals(currentId))
+                    .findFirst()
+                    .ifPresent(tournoiSelector::setValue);
+            }
+            
+        } catch (SQLException ex) {
+            // Handle error silently or show notification
+            System.err.println("Error loading tournaments: " + ex.getMessage());
+        }
+    }
+    
+    private void switchTournament(Parametre tournoi) {
+        // Update session with new tournament
+        UserSession.setCurrentTournoi(tournoi.getId(), tournoi.getNomTournoi());
+        
+        // Reload page to update UI with new tournament
+        getUI().ifPresent(ui -> ui.getPage().reload());
     }
 }
