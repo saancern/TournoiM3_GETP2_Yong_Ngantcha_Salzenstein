@@ -283,7 +283,9 @@ public class VueJoueur extends BaseLayout {
         List<Joueur> joueurs = new ArrayList<>();
         
         try (Connection con = ConnectionPool.getConnection()) {
-            String sql = "SELECT id, prenom, nom, age, sexe, taille FROM joueur ORDER BY nom, prenom";
+            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            String joueurTable = tournoiId == 1 ? "joueur" : "joueur_" + tournoiId;
+            String sql = "SELECT id, prenom, nom, age, sexe, taille FROM " + joueurTable + " ORDER BY nom, prenom";
             try (PreparedStatement pst = con.prepareStatement(sql);
                  ResultSet rs = pst.executeQuery()) {
                 
@@ -459,7 +461,9 @@ public class VueJoueur extends BaseLayout {
         List<Joueur> joueurs = new ArrayList<>();
         
         try (Connection con = ConnectionPool.getConnection()) {
-            String sql = "SELECT * FROM joueur ORDER BY nom, prenom";
+            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            String joueurTable = tournoiId == 1 ? "joueur" : "joueur_" + tournoiId;
+            String sql = "SELECT * FROM " + joueurTable + " ORDER BY nom, prenom";
             try (PreparedStatement pst = con.prepareStatement(sql);
                  ResultSet rs = pst.executeQuery()) {
                 

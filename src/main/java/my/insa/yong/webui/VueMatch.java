@@ -187,7 +187,7 @@ public class VueMatch extends BaseLayout {
 
             // Equipes (cache)
             teamById.clear();
-            List<TeamRow> teams = GestionMatchs.listEquipes(con);
+            List<TeamRow> teams = GestionMatchs.listEquipes(con, tournoiId);
             for (TeamRow t : teams) teamById.put(t.id(), t);
 
             // Si un match est sélectionné, recharger son panneau
@@ -220,11 +220,12 @@ public class VueMatch extends BaseLayout {
         }
         try (Connection con = ConnectionPool.getConnection()) {
             // Lister joueurs des 2 équipes pour ce match
-            List<JoueurRow> joueurs = GestionMatchs.listPlayersForMatch(con, selectedMatch.id());
+            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            List<JoueurRow> joueurs = GestionMatchs.listPlayersForMatch(con, tournoiId, selectedMatch.id());
             buteurSelect.setItems(joueurs);
 
             // Lister les buts du match
-            List<GoalRow> buts = GestionMatchs.listGoalsForMatch(con, selectedMatch.id());
+            List<GoalRow> buts = GestionMatchs.listGoalsForMatch(con, tournoiId, selectedMatch.id());
             goalsGrid.setItems(buts);
 
             // Mettre à jour affichage des scores (déjà recalculés côté modèle)
@@ -283,8 +284,9 @@ public class VueMatch extends BaseLayout {
         try (Connection con = ConnectionPool.getConnection()) {
             // Get the team ID from the selected player
             JoueurRow joueur = buteurSelect.getValue();
-            // Use the correct parameter order: (matchId, equipeId, joueurId, minute)
-            GestionMatchs.addGoal(con, selectedMatch.id(), joueur.equipeId(), joueur.id(), minuteField.getValue());
+            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            // Use the tournament-aware addGoal method
+            GestionMatchs.addGoal(con, tournoiId, selectedMatch.id(), joueur.equipeId(), joueur.id(), minuteField.getValue());
             reloadScoringPanel();
             refresh();  // Refresh to update top scorers
         } catch (SQLException ex) {
@@ -300,7 +302,8 @@ public class VueMatch extends BaseLayout {
         }
 
         try (Connection con = ConnectionPool.getConnection()) {
-            GestionMatchs.clearGoalsForMatch(con, selectedMatch.id());
+            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            GestionMatchs.clearGoalsForMatch(con, tournoiId, selectedMatch.id());
             reloadScoringPanel();
             refresh();  // Refresh to update top scorers
         } catch (SQLException ex) {
@@ -310,7 +313,8 @@ public class VueMatch extends BaseLayout {
 
     private void onDeleteGoal(int goalId) {
         try (Connection con = ConnectionPool.getConnection()) {
-            GestionMatchs.deleteGoal(con, goalId);
+            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            GestionMatchs.deleteGoal(con, tournoiId, goalId);
             reloadScoringPanel();
             refresh();  // Refresh to update top scorers
         } catch (SQLException ex) {

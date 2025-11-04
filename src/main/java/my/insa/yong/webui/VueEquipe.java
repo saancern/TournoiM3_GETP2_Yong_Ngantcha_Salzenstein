@@ -228,7 +228,9 @@ public class VueEquipe extends BaseLayout {
     private void chargerEquipesPourSelection() {
         List<Equipe> equipes = new ArrayList<>();
         try (Connection con = ConnectionPool.getConnection()) {
-            String sql = "SELECT id, nom_equipe, date_creation FROM equipe ORDER BY nom_equipe";
+            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            String equipeTable = tournoiId == 1 ? "equipe" : "equipe_" + tournoiId;
+            String sql = "SELECT id, nom_equipe, date_creation FROM " + equipeTable + " ORDER BY nom_equipe";
             try (PreparedStatement pst = con.prepareStatement(sql);
                  ResultSet rs = pst.executeQuery()) {
                 
@@ -293,7 +295,9 @@ public class VueEquipe extends BaseLayout {
             
             // Ajouter les joueurs à l'équipe
             if (!joueursSelectionnes.isEmpty()) {
-                String sqlJoueur = "INSERT INTO joueur_equipe (joueur_id, equipe_id) VALUES (?, ?)";
+                int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+                String joueurEquipeTable = tournoiId == 1 ? "joueur_equipe" : "joueur_equipe_" + tournoiId;
+                String sqlJoueur = "INSERT INTO " + joueurEquipeTable + " (joueur_id, equipe_id) VALUES (?, ?)";
                 try (PreparedStatement pstJoueur = con.prepareStatement(sqlJoueur)) {
                     for (Joueur joueur : joueursSelectionnes) {
                         pstJoueur.setInt(1, joueur.getId());
@@ -348,7 +352,9 @@ public class VueEquipe extends BaseLayout {
             con.setAutoCommit(false);
             
             // Modifier l'équipe
-            String sql = "UPDATE equipe SET nom_equipe = ?, date_creation = ? WHERE id = ?";
+            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            String equipeTable = tournoiId == 1 ? "equipe" : "equipe_" + tournoiId;
+            String sql = "UPDATE " + equipeTable + " SET nom_equipe = ?, date_creation = ? WHERE id = ?";
             try (PreparedStatement pst = con.prepareStatement(sql)) {
                 pst.setString(1, nomEquipe);
                 pst.setDate(2, Date.valueOf(dateCreation));
@@ -358,7 +364,8 @@ public class VueEquipe extends BaseLayout {
                 
                 if (rows > 0) {
                     // Supprimer les anciens joueurs de l'équipe
-                    String sqlDelete = "DELETE FROM joueur_equipe WHERE equipe_id = ?";
+                    String joueurEquipeTable = tournoiId == 1 ? "joueur_equipe" : "joueur_equipe_" + tournoiId;
+                    String sqlDelete = "DELETE FROM " + joueurEquipeTable + " WHERE equipe_id = ?";
                     try (PreparedStatement pstDelete = con.prepareStatement(sqlDelete)) {
                         pstDelete.setInt(1, equipeSelectionnee.getId());
                         pstDelete.executeUpdate();
@@ -366,7 +373,7 @@ public class VueEquipe extends BaseLayout {
                     
                     // Ajouter les nouveaux joueurs
                     if (!joueursSelectionnes.isEmpty()) {
-                        String sqlJoueur = "INSERT INTO joueur_equipe (joueur_id, equipe_id) VALUES (?, ?)";
+                        String sqlJoueur = "INSERT INTO " + joueurEquipeTable + " (joueur_id, equipe_id) VALUES (?, ?)";
                         try (PreparedStatement pstJoueur = con.prepareStatement(sqlJoueur)) {
                             for (Joueur joueur : joueursSelectionnes) {
                                 pstJoueur.setInt(1, joueur.getId());
@@ -407,15 +414,19 @@ public class VueEquipe extends BaseLayout {
         try (Connection con = ConnectionPool.getConnection()) {
             con.setAutoCommit(false);
             
+            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            String joueurEquipeTable = tournoiId == 1 ? "joueur_equipe" : "joueur_equipe_" + tournoiId;
+            String equipeTable = tournoiId == 1 ? "equipe" : "equipe_" + tournoiId;
+            
             // Supprimer d'abord les joueurs de l'équipe
-            String sqlJoueurs = "DELETE FROM joueur_equipe WHERE equipe_id = ?";
+            String sqlJoueurs = "DELETE FROM " + joueurEquipeTable + " WHERE equipe_id = ?";
             try (PreparedStatement pstJoueurs = con.prepareStatement(sqlJoueurs)) {
                 pstJoueurs.setInt(1, equipeSelectionnee.getId());
                 pstJoueurs.executeUpdate();
             }
             
             // Puis supprimer l'équipe
-            String sql = "DELETE FROM equipe WHERE id = ?";
+            String sql = "DELETE FROM " + equipeTable + " WHERE id = ?";
             try (PreparedStatement pst = con.prepareStatement(sql)) {
                 pst.setInt(1, equipeSelectionnee.getId());
                 
@@ -443,7 +454,9 @@ public class VueEquipe extends BaseLayout {
     private void chargerEquipes() {
         List<Equipe> equipes = new ArrayList<>();
         try (Connection con = ConnectionPool.getConnection()) {
-            String sql = "SELECT * FROM equipe ORDER BY nom_equipe, date_creation";
+            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            String equipeTable = tournoiId == 1 ? "equipe" : "equipe_" + tournoiId;
+            String sql = "SELECT * FROM " + equipeTable + " ORDER BY nom_equipe, date_creation";
             try (PreparedStatement pst = con.prepareStatement(sql);
                  ResultSet rs = pst.executeQuery()) {
                 
@@ -466,7 +479,9 @@ public class VueEquipe extends BaseLayout {
     private void chargerJoueurs() {
         List<Joueur> joueurs = new ArrayList<>();
         try (Connection con = ConnectionPool.getConnection()) {
-            String sql = "SELECT id, prenom, nom, age, sexe, taille FROM joueur ORDER BY nom, prenom";
+            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            String joueurTable = tournoiId == 1 ? "joueur" : "joueur_" + tournoiId;
+            String sql = "SELECT id, prenom, nom, age, sexe, taille FROM " + joueurTable + " ORDER BY nom, prenom";
             try (PreparedStatement pst = con.prepareStatement(sql);
                  ResultSet rs = pst.executeQuery()) {
                 
@@ -492,9 +507,12 @@ public class VueEquipe extends BaseLayout {
     private List<Joueur> chargerJoueursEquipe(int equipeId) {
         List<Joueur> joueurs = new ArrayList<>();
         try (Connection con = ConnectionPool.getConnection()) {
+            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            String joueurTable = tournoiId == 1 ? "joueur" : "joueur_" + tournoiId;
+            String joueurEquipeTable = tournoiId == 1 ? "joueur_equipe" : "joueur_equipe_" + tournoiId;
             String sql = "SELECT j.id, j.prenom, j.nom, j.age, j.sexe, j.taille " +
-                        "FROM joueur j " +
-                        "INNER JOIN joueur_equipe je ON j.id = je.joueur_id " +
+                        "FROM " + joueurTable + " j " +
+                        "INNER JOIN " + joueurEquipeTable + " je ON j.id = je.joueur_id " +
                         "WHERE je.equipe_id = ? " +
                         "ORDER BY j.nom, j.prenom";
             try (PreparedStatement pst = con.prepareStatement(sql)) {

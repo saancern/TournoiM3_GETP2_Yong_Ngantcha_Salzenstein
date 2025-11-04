@@ -17,6 +17,27 @@ import java.util.Random;
 
 public class GestionMatchs {
 
+    // ------------- Tournament-Aware Table Names -------------
+    
+    /**
+     * Get tournament-specific table name
+     * For tournament ID=1 (default), uses base tables: equipe, joueur, rencontre, but
+     * For tournament ID>1, uses tournament-specific tables: equipe_2, joueur_2, etc.
+     */
+    private static String getTableName(String baseTableName, int tournoiId) {
+        if (tournoiId == 1) {
+            return baseTableName;
+        } else {
+            return GestionBdD.getTournamentTableName(baseTableName, tournoiId);
+        }
+    }
+    
+    static String getEquipeTable(int tournoiId) { return getTableName("equipe", tournoiId); }
+    static String getJoueurTable(int tournoiId) { return getTableName("joueur", tournoiId); }
+    static String getJoueurEquipeTable(int tournoiId) { return getTableName("joueur_equipe", tournoiId); }
+    static String getRencontreTable(int tournoiId) { return getTableName("rencontre", tournoiId); }
+    static String getButTable(int tournoiId) { return getTableName("but", tournoiId); }
+
     // ---------------- DTOs ----------------
     public static record MatchRow(
             int id, int round, Integer poolIndex,
@@ -68,14 +89,15 @@ public class GestionMatchs {
         int nextRound = getCurrentRound(con, tournoiId) + 1;
         List<Integer> alive = getAliveTeams(con, tournoiId);
         if (alive.isEmpty()) {
-            alive = getAllTeamIds(con);
+            alive = getAllTeamIds(con, tournoiId);
         }
 
         Collections.shuffle(alive, new Random());
         int pool = 1;
 
+        String rencontreTable = getRencontreTable(tournoiId);
         try (PreparedStatement pst = con.prepareStatement(
-            "INSERT INTO rencontre (tournoi_id, round_number, pool_index, equipe_a_id, equipe_b_id, score_a, score_b, winner_id, played) " +
+            "INSERT INTO " + rencontreTable + " (tournoi_id, round_number, pool_index, equipe_a_id, equipe_b_id, score_a, score_b, winner_id, played) " +
             "VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL, false)"
         )) {
             for (int i = 0; i < alive.size(); i += 2) {
@@ -94,9 +116,9 @@ public class GestionMatchs {
 
         // BYE: valider immédiatement les matches sans adversaire
         try (PreparedStatement psSelect = con.prepareStatement(
-                "SELECT id, equipe_a_id FROM rencontre WHERE tournoi_id=? AND round_number=? AND equipe_b_id IS NULL AND played=false");
+                "SELECT id, equipe_a_id FROM " + rencontreTable + " WHERE tournoi_id=? AND round_number=? AND equipe_b_id IS NULL AND played=false");
              PreparedStatement psUpdate = con.prepareStatement(
-                "UPDATE rencontre SET score_a=1, score_b=NULL, winner_id=?, played=true WHERE id=?")) {
+                "UPDATE " + rencontreTable + " SET score_a=1, score_b=NULL, winner_id=?, played=true WHERE id=?")) {
             psSelect.setInt(1, tournoiId);
             psSelect.setInt(2, nextRound);
             try (ResultSet rs = psSelect.executeQuery()) {
@@ -117,12 +139,13 @@ public class GestionMatchs {
         int count = 0;
         Random rnd = new Random();
 
+        String rencontreTable = getRencontreTable(tournoiId);
         String qSelect = """
             SELECT id, equipe_a_id, equipe_b_id
-            FROM rencontre
+            FROM """ + rencontreTable + """
             WHERE tournoi_id=? AND round_number=? AND played=false AND equipe_b_id IS NOT NULL
         """;
-        String qUpdate = "UPDATE rencontre SET score_a=?, score_b=?, winner_id=?, played=true WHERE id=?";
+        String qUpdate = "UPDATE " + rencontreTable + " SET score_a=?, score_b=?, winner_id=?, played=true WHERE id=?";
         try (PreparedStatement ps = con.prepareStatement(qSelect);
              PreparedStatement up = con.prepareStatement(qUpdate)) {
             ps.setInt(1, tournoiId);
@@ -147,8 +170,8 @@ public class GestionMatchs {
                     up.addBatch();
 
                     // --- buteurs aléatoires cohérents avec le score ---
-                    insertRandomGoals(con, matchId, a, sa, rnd);
-                    insertRandomGoals(con, matchId, b, sb, rnd);
+                    insertRandomGoals(con, tournoiId, matchId, a, sa, rnd);
+                    insertRandomGoals(con, tournoiId, matchId, b, sb, rnd);
 
                     count++;
                 }
@@ -158,13 +181,14 @@ public class GestionMatchs {
         return count;
     }
 
-    private static void insertRandomGoals(Connection con, int rencontreId, int equipeId, int nbButs, Random rnd) throws SQLException {
+    private static void insertRandomGoals(Connection con, int tournoiId, int rencontreId, int equipeId, int nbButs, Random rnd) throws SQLException {
         if (nbButs <= 0) return;
-        List<Integer> joueurs = getPlayerIdsByTeam(con, equipeId);
+        List<Integer> joueurs = getPlayerIdsByTeam(con, tournoiId, equipeId);
         if (joueurs.isEmpty()) return;
 
+        String butTable = getButTable(tournoiId);
         try (PreparedStatement ins = con.prepareStatement(
-                "INSERT INTO but (rencontre_id, equipe_id, joueur_id, minute) VALUES (?,?,?,?)")) {
+                "INSERT INTO " + butTable + " (rencontre_id, equipe_id, joueur_id, minute) VALUES (?,?,?,?)")) {
             for (int i = 0; i < nbButs; i++) {
                 int j = joueurs.get(rnd.nextInt(joueurs.size()));
                 Integer minute = 1 + rnd.nextInt(90); // 1..90
@@ -180,19 +204,20 @@ public class GestionMatchs {
 
     // ------------- Lecture / états -------------
     public static List<MatchRow> listAllMatches(Connection con, int tournoiId) throws SQLException {
-        String sql = """
-            SELECT r.id, r.round_number, r.pool_index, r.equipe_a_id, r.equipe_b_id, r.score_a, r.score_b,
-                   r.winner_id, r.played,
-                   ea.nom_equipe AS a_name,
-                   eb.nom_equipe AS b_name,
-                   ew.nom_equipe AS w_name
-            FROM rencontre r
-            LEFT JOIN equipe ea ON ea.id = r.equipe_a_id
-            LEFT JOIN equipe eb ON eb.id = r.equipe_b_id
-            LEFT JOIN equipe ew ON ew.id = r.winner_id
-            WHERE r.tournoi_id = ?
-            ORDER BY r.round_number, r.pool_index, r.id
-        """;
+        String rencontreTable = getRencontreTable(tournoiId);
+        String equipeTable = getEquipeTable(tournoiId);
+        
+        String sql = "SELECT r.id, r.round_number, r.pool_index, r.equipe_a_id, r.equipe_b_id, r.score_a, r.score_b, " +
+                    "r.winner_id, r.played, " +
+                    "ea.nom_equipe AS a_name, " +
+                    "eb.nom_equipe AS b_name, " +
+                    "ew.nom_equipe AS w_name " +
+                    "FROM " + rencontreTable + " r " +
+                    "LEFT JOIN " + equipeTable + " ea ON ea.id = r.equipe_a_id " +
+                    "LEFT JOIN " + equipeTable + " eb ON eb.id = r.equipe_b_id " +
+                    "LEFT JOIN " + equipeTable + " ew ON ew.id = r.winner_id " +
+                    "WHERE r.tournoi_id = ? " +
+                    "ORDER BY r.round_number, r.pool_index, r.id";
         Map<Integer, BaseMatch> base = new LinkedHashMap<>();
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setInt(1, tournoiId);
@@ -266,11 +291,14 @@ public class GestionMatchs {
     }
 
     public static void resetMatches(Connection con, int tournoiId) throws SQLException {
-        try (PreparedStatement pst = con.prepareStatement("DELETE FROM but WHERE rencontre_id IN (SELECT id FROM rencontre WHERE tournoi_id=?)")) {
+        String butTable = getButTable(tournoiId);
+        String rencontreTable = getRencontreTable(tournoiId);
+        
+        try (PreparedStatement pst = con.prepareStatement("DELETE FROM " + butTable + " WHERE rencontre_id IN (SELECT id FROM " + rencontreTable + " WHERE tournoi_id=?)")) {
             pst.setInt(1, tournoiId);
             pst.executeUpdate();
         }
-        try (PreparedStatement pst = con.prepareStatement("DELETE FROM rencontre WHERE tournoi_id=?")) {
+        try (PreparedStatement pst = con.prepareStatement("DELETE FROM " + rencontreTable + " WHERE tournoi_id=?")) {
             pst.setInt(1, tournoiId);
             pst.executeUpdate();
         }
@@ -278,20 +306,23 @@ public class GestionMatchs {
 
     // ------------- Classement des buteurs -------------
     public static List<ButeurRow> getTopScorers(Connection con, int tournoiId, int limit) throws SQLException {
-        String sql = """
-            SELECT j.id AS joueur_id,
-                   CONCAT(j.prenom, ' ', j.nom) AS joueur,
-                   e.nom_equipe AS equipe,
-                   COUNT(*) AS buts
-            FROM but b
-            JOIN rencontre r ON r.id = b.rencontre_id
-            JOIN joueur j    ON j.id = b.joueur_id
-            LEFT JOIN equipe e ON e.id = b.equipe_id
-            WHERE r.tournoi_id = ?
-            GROUP BY j.id, j.prenom, j.nom, e.nom_equipe
-            ORDER BY buts DESC, joueur
-            LIMIT ?
-        """;
+        String butTable = getButTable(tournoiId);
+        String rencontreTable = getRencontreTable(tournoiId);
+        String joueurTable = getJoueurTable(tournoiId);
+        String equipeTable = getEquipeTable(tournoiId);
+        
+        String sql = "SELECT j.id AS joueur_id, " +
+                    "CONCAT(j.prenom, ' ', j.nom) AS joueur, " +
+                    "e.nom_equipe AS equipe, " +
+                    "COUNT(*) AS buts " +
+                    "FROM " + butTable + " b " +
+                    "JOIN " + rencontreTable + " r ON r.id = b.rencontre_id " +
+                    "JOIN " + joueurTable + " j ON j.id = b.joueur_id " +
+                    "LEFT JOIN " + equipeTable + " e ON e.id = b.equipe_id " +
+                    "WHERE r.tournoi_id = ? " +
+                    "GROUP BY j.id, j.prenom, j.nom, e.nom_equipe " +
+                    "ORDER BY buts DESC, joueur " +
+                    "LIMIT ?";
         List<ButeurRow> list = new ArrayList<>();
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setInt(1, tournoiId);
@@ -312,9 +343,10 @@ public class GestionMatchs {
 
     // ===================== Mode SEMI-AUTO : API =====================
 
-    /** Liste des équipes (id, nom) */
-    public static List<TeamRow> listEquipes(Connection con) throws SQLException {
-        String sql = "SELECT id, nom_equipe FROM equipe ORDER BY nom_equipe";
+    /** Liste des équipes (id, nom) pour un tournoi */
+    public static List<TeamRow> listEquipes(Connection con, int tournoiId) throws SQLException {
+        String equipeTable = getEquipeTable(tournoiId);
+        String sql = "SELECT id, nom_equipe FROM " + equipeTable + " ORDER BY nom_equipe";
         List<TeamRow> out = new ArrayList<>();
         try (PreparedStatement pst = con.prepareStatement(sql);
              ResultSet rs = pst.executeQuery()) {
@@ -326,9 +358,10 @@ public class GestionMatchs {
     }
 
     /** Liste des joueurs pour le match (union des 2 équipes) */
-    public static List<JoueurRow> listPlayersForMatch(Connection con, int matchId) throws SQLException {
+    public static List<JoueurRow> listPlayersForMatch(Connection con, int tournoiId, int matchId) throws SQLException {
         int aId, bId;
-        try (PreparedStatement ps = con.prepareStatement("SELECT equipe_a_id, equipe_b_id FROM rencontre WHERE id=?")) {
+        String rencontreTable = getRencontreTable(tournoiId);
+        try (PreparedStatement ps = con.prepareStatement("SELECT equipe_a_id, equipe_b_id FROM " + rencontreTable + " WHERE id=?")) {
             ps.setInt(1, matchId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return List.of();
@@ -338,23 +371,23 @@ public class GestionMatchs {
             }
         }
 
+        String joueurTable = getJoueurTable(tournoiId);
+        String joueurEquipeTable = getJoueurEquipeTable(tournoiId);
+        String equipeTable = getEquipeTable(tournoiId);
+        
         String sql = (bId > 0)
-                ? """
-                   SELECT j.id, CONCAT(j.prenom,' ',j.nom) AS nom, e.id AS equipe_id, e.nom_equipe
-                   FROM joueur j
-                   JOIN joueur_equipe je ON je.joueur_id=j.id
-                   JOIN equipe e ON e.id=je.equipe_id
-                   WHERE je.equipe_id IN (?,?)
-                   ORDER BY e.nom_equipe, nom
-                  """
-                : """
-                   SELECT j.id, CONCAT(j.prenom,' ',j.nom) AS nom, e.id AS equipe_id, e.nom_equipe
-                   FROM joueur j
-                   JOIN joueur_equipe je ON je.joueur_id=j.id
-                   JOIN equipe e ON e.id=je.equipe_id
-                   WHERE je.equipe_id = ?
-                   ORDER BY e.nom_equipe, nom
-                  """;
+                ? "SELECT j.id, CONCAT(j.prenom,' ',j.nom) AS nom, e.id AS equipe_id, e.nom_equipe " +
+                  "FROM " + joueurTable + " j " +
+                  "JOIN " + joueurEquipeTable + " je ON je.joueur_id=j.id " +
+                  "JOIN " + equipeTable + " e ON e.id=je.equipe_id " +
+                  "WHERE je.equipe_id IN (?,?) " +
+                  "ORDER BY e.nom_equipe, nom"
+                : "SELECT j.id, CONCAT(j.prenom,' ',j.nom) AS nom, e.id AS equipe_id, e.nom_equipe " +
+                  "FROM " + joueurTable + " j " +
+                  "JOIN " + joueurEquipeTable + " je ON je.joueur_id=j.id " +
+                  "JOIN " + equipeTable + " e ON e.id=je.equipe_id " +
+                  "WHERE je.equipe_id = ? " +
+                  "ORDER BY e.nom_equipe, nom";
         List<JoueurRow> out = new ArrayList<>();
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setInt(1, aId);
@@ -373,17 +406,19 @@ public class GestionMatchs {
         return out;
     }
 
-    /** Liste des buts pour un match */
-    public static List<GoalRow> listGoalsForMatch(Connection con, int matchId) throws SQLException {
-        String sql = """
-            SELECT b.id, b.rencontre_id, b.equipe_id, e.nom_equipe,
-                   j.id AS joueur_id, CONCAT(j.prenom,' ',j.nom) AS joueur_nom, b.minute
-            FROM but b
-            LEFT JOIN joueur j ON j.id=b.joueur_id
-            LEFT JOIN equipe e ON e.id=b.equipe_id
-            WHERE b.rencontre_id=?
-            ORDER BY COALESCE(b.minute, 999), b.id
-        """;
+    /** Tournament-aware version: Liste des buts pour un match */
+    public static List<GoalRow> listGoalsForMatch(Connection con, int tournoiId, int matchId) throws SQLException {
+        String butTable = getButTable(tournoiId);
+        String joueurTable = getJoueurTable(tournoiId);
+        String equipeTable = getEquipeTable(tournoiId);
+        
+        String sql = "SELECT b.id, b.rencontre_id, b.equipe_id, e.nom_equipe, " +
+                    "j.id AS joueur_id, CONCAT(j.prenom,' ',j.nom) AS joueur_nom, b.minute " +
+                    "FROM " + butTable + " b " +
+                    "LEFT JOIN " + joueurTable + " j ON j.id=b.joueur_id " +
+                    "LEFT JOIN " + equipeTable + " e ON e.id=b.equipe_id " +
+                    "WHERE b.rencontre_id=? " +
+                    "ORDER BY COALESCE(b.minute, 999), b.id";
         List<GoalRow> out = new ArrayList<>();
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setInt(1, matchId);
@@ -399,11 +434,27 @@ public class GestionMatchs {
         return out;
     }
 
-    /** Ajoute un but puis recalcule score/vainqueur. */
-    public static void addGoal(Connection con, int matchId, int equipeId, int joueurId, Integer minute) throws SQLException {
+    /** Legacy version: Liste des buts pour un match */
+    public static List<GoalRow> listGoalsForMatch(Connection con, int matchId) throws SQLException {
+        // Determine tournament ID from match
+        int tournoiId = 1; // Default to tournament 1
+        try (PreparedStatement ps = con.prepareStatement("SELECT tournoi_id FROM rencontre WHERE id=?")) {
+            ps.setInt(1, matchId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    tournoiId = rs.getInt(1);
+                }
+            }
+        }
+        return listGoalsForMatch(con, tournoiId, matchId);
+    }
+
+    /** Ajoute un but puis recalcule score/vainqueur. Tournament-aware version. */
+    public static void addGoal(Connection con, int tournoiId, int matchId, int equipeId, int joueurId, Integer minute) throws SQLException {
         // Vérif que l'équipe appartient bien au match
         int aId, bId;
-        try (PreparedStatement ps = con.prepareStatement("SELECT equipe_a_id, equipe_b_id FROM rencontre WHERE id=?")) {
+        String rencontreTable = getRencontreTable(tournoiId);
+        try (PreparedStatement ps = con.prepareStatement("SELECT equipe_a_id, equipe_b_id FROM " + rencontreTable + " WHERE id=?")) {
             ps.setInt(1, matchId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) throw new SQLException("Match introuvable.");
@@ -415,48 +466,102 @@ public class GestionMatchs {
             throw new SQLException("Le but saisi ne correspond à aucune des équipes du match.");
         }
 
+        String butTable = getButTable(tournoiId);
         try (PreparedStatement ins = con.prepareStatement(
-                "INSERT INTO but (rencontre_id, equipe_id, joueur_id, minute) VALUES (?,?,?,?)")) {
+                "INSERT INTO " + butTable + " (rencontre_id, equipe_id, joueur_id, minute) VALUES (?,?,?,?)")) {
             ins.setInt(1, matchId);
             ins.setInt(2, equipeId);
             ins.setInt(3, joueurId);
             if (minute == null) ins.setNull(4, Types.INTEGER); else ins.setInt(4, minute);
             ins.executeUpdate();
         }
-        recomputeScoreFromGoals(con, matchId);
+        recomputeScoreFromGoals(con, tournoiId, matchId);
+    }
+    
+    /** Legacy method - determines tournament from match and calls tournament-aware version */
+    public static void addGoal(Connection con, int matchId, int equipeId, int joueurId, Integer minute) throws SQLException {
+        // First determine tournament ID from match
+        int tournoiId = 1; // Default to tournament 1
+        
+        // Try to find the match in tournament-specific tables (starting from ID 2 and up)
+        // If not found, it's in the base tables (tournament 1)
+        try (PreparedStatement ps = con.prepareStatement("SELECT tournoi_id FROM rencontre WHERE id=?")) {
+            ps.setInt(1, matchId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    tournoiId = rs.getInt(1);
+                }
+            }
+        }
+        
+        addGoal(con, tournoiId, matchId, equipeId, joueurId, minute);
     }
 
-    /** Supprime un but (par id) puis recalcule. */
-    public static void deleteGoal(Connection con, int goalId) throws SQLException {
+    /** Tournament-aware version: Supprime un but (par id) puis recalcule. */
+    public static void deleteGoal(Connection con, int tournoiId, int goalId) throws SQLException {
+        String butTable = getButTable(tournoiId);
+        
         Integer matchId = null;
-        try (PreparedStatement s = con.prepareStatement("SELECT rencontre_id FROM but WHERE id=?")) {
+        try (PreparedStatement s = con.prepareStatement("SELECT rencontre_id FROM " + butTable + " WHERE id=?")) {
             s.setInt(1, goalId);
             try (ResultSet rs = s.executeQuery()) {
                 if (rs.next()) matchId = (Integer) rs.getObject(1);
             }
         }
-        try (PreparedStatement del = con.prepareStatement("DELETE FROM but WHERE id=?")) {
+        try (PreparedStatement del = con.prepareStatement("DELETE FROM " + butTable + " WHERE id=?")) {
             del.setInt(1, goalId);
             del.executeUpdate();
         }
         if (matchId != null) {
-            recomputeScoreFromGoals(con, matchId);
+            recomputeScoreFromGoals(con, tournoiId, matchId);
         }
     }
 
-    /** Efface tous les buts du match puis recalcule (score=0-0, non joué). */
-    public static void clearGoalsForMatch(Connection con, int matchId) throws SQLException {
-        try (PreparedStatement del = con.prepareStatement("DELETE FROM but WHERE rencontre_id=?")) {
+    /** Legacy version: Supprime un but (par id) puis recalcule. */
+    public static void deleteGoal(Connection con, int goalId) throws SQLException {
+        // Determine tournament ID from goal
+        int tournoiId = 1; // Default to tournament 1
+        try (PreparedStatement ps = con.prepareStatement("SELECT r.tournoi_id FROM rencontre r JOIN but b ON r.id=b.rencontre_id WHERE b.id=?")) {
+            ps.setInt(1, goalId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    tournoiId = rs.getInt(1);
+                }
+            }
+        }
+        deleteGoal(con, tournoiId, goalId);
+    }
+
+    /** Tournament-aware version: Efface tous les buts du match puis recalcule (score=0-0, non joué). */
+    public static void clearGoalsForMatch(Connection con, int tournoiId, int matchId) throws SQLException {
+        String butTable = getButTable(tournoiId);
+        try (PreparedStatement del = con.prepareStatement("DELETE FROM " + butTable + " WHERE rencontre_id=?")) {
             del.setInt(1, matchId);
             del.executeUpdate();
         }
-        recomputeScoreFromGoals(con, matchId);
+        recomputeScoreFromGoals(con, tournoiId, matchId);
     }
 
-    /** Recalcule score/winner/played à partir de la table des buts. Pas d'égalité autorisée -> 'played' reste false si égalité. */
-    public static void recomputeScoreFromGoals(Connection con, int matchId) throws SQLException {
+    /** Legacy version: Efface tous les buts du match puis recalcule (score=0-0, non joué). */
+    public static void clearGoalsForMatch(Connection con, int matchId) throws SQLException {
+        // Determine tournament ID from match
+        int tournoiId = 1; // Default to tournament 1
+        try (PreparedStatement ps = con.prepareStatement("SELECT tournoi_id FROM rencontre WHERE id=?")) {
+            ps.setInt(1, matchId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    tournoiId = rs.getInt(1);
+                }
+            }
+        }
+        clearGoalsForMatch(con, tournoiId, matchId);
+    }
+
+    /** Tournament-aware version: Recalcule score/winner/played à partir de la table des buts. */
+    public static void recomputeScoreFromGoals(Connection con, int tournoiId, int matchId) throws SQLException {
         int aId, bId;
-        try (PreparedStatement ps = con.prepareStatement("SELECT equipe_a_id, equipe_b_id FROM rencontre WHERE id=?")) {
+        String rencontreTable = getRencontreTable(tournoiId);
+        try (PreparedStatement ps = con.prepareStatement("SELECT equipe_a_id, equipe_b_id FROM " + rencontreTable + " WHERE id=?")) {
             ps.setInt(1, matchId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return;
@@ -467,7 +572,8 @@ public class GestionMatchs {
         }
         if (bId <= 0) return; // BYE: rien à recalculer
 
-        String sql = "SELECT equipe_id, COUNT(*) FROM but WHERE rencontre_id=? GROUP BY equipe_id";
+        String butTable = getButTable(tournoiId);
+        String sql = "SELECT equipe_id, COUNT(*) FROM " + butTable + " WHERE rencontre_id=? GROUP BY equipe_id";
         int sa = 0, sb = 0;
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setInt(1, matchId);
@@ -489,7 +595,7 @@ public class GestionMatchs {
         }
 
         try (PreparedStatement up = con.prepareStatement(
-                "UPDATE rencontre SET score_a=?, score_b=?, winner_id=?, played=? WHERE id=?")) {
+                "UPDATE " + rencontreTable + " SET score_a=?, score_b=?, winner_id=?, played=? WHERE id=?")) {
             up.setInt(1, sa);
             up.setInt(2, sb);
             if (winner == null) up.setNull(3, Types.INTEGER); else up.setInt(3, winner);
@@ -499,11 +605,28 @@ public class GestionMatchs {
         }
     }
 
+    /** Legacy version: Recalcule score/winner/played à partir de la table des buts. Pas d'égalité autorisée -> 'played' reste false si égalité. */
+    public static void recomputeScoreFromGoals(Connection con, int matchId) throws SQLException {
+        // Determine tournament ID from match
+        int tournoiId = 1; // Default to tournament 1
+        try (PreparedStatement ps = con.prepareStatement("SELECT tournoi_id FROM rencontre WHERE id=?")) {
+            ps.setInt(1, matchId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    tournoiId = rs.getInt(1);
+                }
+            }
+        }
+        recomputeScoreFromGoals(con, tournoiId, matchId);
+    }
+    
+    /** Legacy implementation kept for backward compatibility */
     // ======= Utilitaires exposés à l'UI =======
 
     public static int getCurrentRound(Connection con, int tournoiId) throws SQLException {
+        String rencontreTable = getRencontreTable(tournoiId);
         try (PreparedStatement pst = con.prepareStatement(
-                "SELECT COALESCE(MAX(round_number), 0) FROM rencontre WHERE tournoi_id=?")) {
+                "SELECT COALESCE(MAX(round_number), 0) FROM " + rencontreTable + " WHERE tournoi_id=?")) {
             pst.setInt(1, tournoiId);
             try (ResultSet rs = pst.executeQuery()) { rs.next(); return rs.getInt(1); }
         }
@@ -527,14 +650,18 @@ public class GestionMatchs {
                                     Map<Integer, String> buteursA,
                                     Map<Integer, String> buteursB) throws SQLException {
 
+        String butTable = getButTable(tournoiId);
+        String rencontreTable = getRencontreTable(tournoiId);
+        String joueurTable = getJoueurTable(tournoiId);
+        
         String sql = """
             SELECT b.rencontre_id, b.equipe_id, j.id AS joueur_id, j.prenom, j.nom
-            FROM but b
-            JOIN rencontre r ON r.id = b.rencontre_id
-            JOIN joueur j    ON j.id = b.joueur_id
+            FROM %s b
+            JOIN %s r ON r.id = b.rencontre_id
+            JOIN %s j    ON j.id = b.joueur_id
             WHERE r.tournoi_id = ?
             ORDER BY b.rencontre_id
-        """;
+        """.formatted(butTable, rencontreTable, joueurTable);
         Map<Integer, Map<Integer, Integer>> goalsByMatchTeamPlayer = new HashMap<>();
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {
@@ -556,8 +683,8 @@ public class GestionMatchs {
         for (BaseMatch m : base.values()) {
             Map<Integer, Integer> counts = goalsByMatchTeamPlayer.getOrDefault(m.id, Map.of());
 
-            String a = summariseForTeam(con, counts, m.equipeAId, cachePlayerName);
-            String b = (m.equipeBId == null) ? "" : summariseForTeam(con, counts, m.equipeBId, cachePlayerName);
+            String a = summariseForTeam(con, counts, m.equipeAId, cachePlayerName, tournoiId);
+            String b = (m.equipeBId == null) ? "" : summariseForTeam(con, counts, m.equipeBId, cachePlayerName, tournoiId);
 
             buteursA.put(m.id, a);
             buteursB.put(m.id, b);
@@ -567,7 +694,8 @@ public class GestionMatchs {
     private static String summariseForTeam(Connection con,
                                            Map<Integer, Integer> counts,
                                            Integer teamId,
-                                           Map<Integer, String> cachePlayerName) throws SQLException {
+                                           Map<Integer, String> cachePlayerName,
+                                           int tournoiId) throws SQLException {
         if (teamId == null) return "";
         List<int[]> entries = new ArrayList<>();
         for (Map.Entry<Integer, Integer> e : counts.entrySet()) {
@@ -584,11 +712,12 @@ public class GestionMatchs {
 
         StringBuilder sb = new StringBuilder();
         boolean first = true;
+        String joueurTable = getJoueurTable(tournoiId);
         for (int[] it : entries) {
             int pid = it[0];
             int buts = it[1];
             String nom = cachePlayerName.computeIfAbsent(pid, id -> {
-                try (PreparedStatement p = con.prepareStatement("SELECT CONCAT(prenom,' ',nom) FROM joueur WHERE id=?")) {
+                try (PreparedStatement p = con.prepareStatement("SELECT CONCAT(prenom,' ',nom) FROM " + joueurTable + " WHERE id=?")) {
                     try {
                         p.setInt(1, id);
                         try (ResultSet rs = p.executeQuery()) {
@@ -627,10 +756,11 @@ public class GestionMatchs {
 
     private static List<Integer> getAliveTeams(Connection con, int tournoiId) throws SQLException {
         int curRound = getCurrentRound(con, tournoiId);
-        if (curRound == 0) return getAllTeamIds(con);
+        if (curRound == 0) return getAllTeamIds(con, tournoiId);
         List<Integer> res = new ArrayList<>();
+        String rencontreTable = getRencontreTable(tournoiId);
         try (PreparedStatement pst = con.prepareStatement(
-                "SELECT DISTINCT winner_id FROM rencontre WHERE tournoi_id=? AND round_number=? AND played=true AND winner_id IS NOT NULL")) {
+                "SELECT DISTINCT winner_id FROM " + rencontreTable + " WHERE tournoi_id=? AND round_number=? AND played=true AND winner_id IS NOT NULL")) {
             pst.setInt(1, tournoiId);
             pst.setInt(2, curRound);
             try (ResultSet rs = pst.executeQuery()) { while (rs.next()) res.add(rs.getInt(1)); }
@@ -638,19 +768,21 @@ public class GestionMatchs {
         return res;
     }
 
-    private static List<Integer> getAllTeamIds(Connection con) throws SQLException {
+    private static List<Integer> getAllTeamIds(Connection con, int tournoiId) throws SQLException {
         List<Integer> ids = new ArrayList<>();
+        String equipeTable = getEquipeTable(tournoiId);
         try (Statement st = con.createStatement();
-             ResultSet rs = st.executeQuery("SELECT id FROM equipe ORDER BY id")) {
+             ResultSet rs = st.executeQuery("SELECT id FROM " + equipeTable + " ORDER BY id")) {
             while (rs.next()) ids.add(rs.getInt(1));
         }
         return ids;
     }
 
-    private static List<Integer> getPlayerIdsByTeam(Connection con, int equipeId) throws SQLException {
+    private static List<Integer> getPlayerIdsByTeam(Connection con, int tournoiId, int equipeId) throws SQLException {
         List<Integer> ids = new ArrayList<>();
+        String joueurEquipeTable = getJoueurEquipeTable(tournoiId);
         try (PreparedStatement ps = con.prepareStatement(
-                "SELECT joueur_id FROM joueur_equipe WHERE equipe_id=?")) {
+                "SELECT joueur_id FROM " + joueurEquipeTable + " WHERE equipe_id=?")) {
             ps.setInt(1, equipeId);
             try (ResultSet rs = ps.executeQuery()) { while (rs.next()) ids.add(rs.getInt(1)); }
         }

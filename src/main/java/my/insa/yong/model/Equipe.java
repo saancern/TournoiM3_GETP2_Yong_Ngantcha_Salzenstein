@@ -47,7 +47,10 @@ public class Equipe extends ClasseMiroir {
 
     @Override
     protected Statement saveSansId(Connection con) throws SQLException {
-        String sql = "INSERT INTO equipe (nom_equipe, date_creation) VALUES (?, ?)";
+        // Use tournament-specific table names
+        int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+        String equipeTable = tournoiId == 1 ? "equipe" : "equipe_" + tournoiId;
+        String sql = "INSERT INTO " + equipeTable + " (nom_equipe, date_creation) VALUES (?, ?)";
         PreparedStatement pst = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
         pst.setString(1, this.nomEquipe);
         pst.setDate(2, Date.valueOf(this.dateCreation));

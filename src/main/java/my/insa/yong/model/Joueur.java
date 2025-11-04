@@ -62,7 +62,10 @@ public class Joueur extends ClasseMiroir {
 
     @Override
     protected Statement saveSansId(Connection con) throws SQLException {
-        String sql = "INSERT INTO joueur (prenom, nom, age, sexe, taille) VALUES (?, ?, ?, ?, ?)";
+        // Use tournament-specific table names
+        int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+        String joueurTable = tournoiId == 1 ? "joueur" : "joueur_" + tournoiId;
+        String sql = "INSERT INTO " + joueurTable + " (prenom, nom, age, sexe, taille) VALUES (?, ?, ?, ?, ?)";
         PreparedStatement pst = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
         pst.setString(1, this.prenom);
         pst.setString(2, this.nom);

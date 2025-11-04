@@ -111,7 +111,9 @@ public class VueJoueur_alle extends VerticalLayout {
                 break;
         }
         
-        String sql = "SELECT id, nom, prenom, age, sexe, taille FROM joueur " + orderByClause;
+        int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+        String joueurTable = tournoiId == 1 ? "joueur" : "joueur_" + tournoiId;
+        String sql = "SELECT id, nom, prenom, age, sexe, taille FROM " + joueurTable + " " + orderByClause;
         
         try (Connection connection = ConnectionPool.getConnection();
              PreparedStatement pstmt = connection.prepareStatement(sql);
@@ -353,8 +355,11 @@ public class VueJoueur_alle extends VerticalLayout {
 
     private String obtenirEquipesDuJoueur(int joueurId) {
         List<String> equipes = new ArrayList<>();
-        String sql = "SELECT e.nom_equipe FROM equipe e " +
-                    "JOIN joueur_equipe je ON e.id = je.equipe_id " +
+        int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+        String equipeTable = tournoiId == 1 ? "equipe" : "equipe_" + tournoiId;
+        String joueurEquipeTable = tournoiId == 1 ? "joueur_equipe" : "joueur_equipe_" + tournoiId;
+        String sql = "SELECT e.nom_equipe FROM " + equipeTable + " e " +
+                    "JOIN " + joueurEquipeTable + " je ON e.id = je.equipe_id " +
                     "WHERE je.joueur_id = ?";
         
         try (Connection connection = ConnectionPool.getConnection();
