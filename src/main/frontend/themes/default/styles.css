@@ -622,3 +622,68 @@ vaadin-router-link {
 .avatar-dialog-close-button {
   margin-top: 20px;
 }
+
+/* ===== SCORE MODIFICATION DIALOG STYLES ===== */
+.score-dialog {
+  min-width: 600px;
+  max-width: 800px;
+}
+
+.score-dialog-content {
+  padding: var(--lumo-space-l);
+}
+
+.score-dialog-title {
+  color: var(--lumo-header-text-color);
+  text-align: center;
+  margin-bottom: var(--lumo-space-l);
+}
+
+.score-match-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--lumo-space-m);
+  padding: var(--lumo-space-m);
+  border: 1px solid var(--lumo-contrast-20pct);
+  border-radius: var(--lumo-border-radius-m);
+  margin-bottom: var(--lumo-space-s);
+  background-color: var(--lumo-base-color);
+}
+
+.score-team-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--lumo-space-xs);
+  min-width: 120px;
+}
+
+.score-team-name {
+  font-weight: 600;
+  color: var(--lumo-body-text-color);
+  text-align: center;
+  margin: 0;
+}
+
+.score-vs {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: var(--lumo-secondary-text-color);
+  margin: 0 var(--lumo-space-m);
+}
+
+.score-input {
+  text-align: center;
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+.score-dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--lumo-space-m);
+  margin-top: var(--lumo-space-l);
+  padding-top: var(--lumo-space-m);
+  border-top: 1px solid var(--lumo-contrast-10pct);
+}
