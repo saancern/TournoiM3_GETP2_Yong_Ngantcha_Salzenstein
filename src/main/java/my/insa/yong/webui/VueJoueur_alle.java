@@ -8,6 +8,7 @@ import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -258,12 +259,75 @@ public class VueJoueur_alle extends VerticalLayout {
         infoLayout.add(ageInfo, sexeInfo, equipesInfo);
         infoCard.add(infoLayout);
 
+        // Section des matchs
+        H4 titreMatchs = new H4("Liste des matchs");
+        titreMatchs.getStyle().set("margin", "20px 0 10px 0");
+        
+        // Récupérer les matchs du joueur
+        List<MatchInfo> matches = obtenirMatchsDuJoueur(joueur.getId());
+        
+        Card matchsCard = new Card();
+        matchsCard.addClassName("avatar-dialog-matches-card");
+        matchsCard.setWidthFull();
+        
+        VerticalLayout matchsLayout = new VerticalLayout();
+        matchsLayout.setPadding(true);
+        matchsLayout.setSpacing(true);
+        
+        if (matches.isEmpty()) {
+            Span aucunMatch = new Span("Aucun match trouvé");
+            aucunMatch.getStyle().set("font-style", "italic")
+                                 .set("color", "var(--lumo-secondary-text-color)");
+            matchsLayout.add(aucunMatch);
+        } else {
+            // Limiter à 5 matchs pour éviter que le dialog soit trop grand
+            List<MatchInfo> matchsLimites = matches.subList(0, Math.min(matches.size(), 5));
+            
+            for (MatchInfo match : matchsLimites) {
+                HorizontalLayout matchRow = new HorizontalLayout();
+                matchRow.setWidthFull();
+                matchRow.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
+                matchRow.setAlignItems(FlexComponent.Alignment.CENTER);
+                matchRow.getStyle().set("padding", "8px 0");
+                
+                VerticalLayout matchInfo = new VerticalLayout();
+                matchInfo.setSpacing(false);
+                matchInfo.setPadding(false);
+                
+                Span adversaire = new Span("vs " + match.getAdversaire());
+                adversaire.getStyle().set("font-weight", "500");
+                
+                Span details = new Span(match.getDate() + " • " + match.getStatut());
+                details.getStyle().set("font-size", "0.9em")
+                                  .set("color", "var(--lumo-secondary-text-color)");
+                
+                matchInfo.add(adversaire, details);
+                
+                Span score = new Span(match.getScore());
+                score.getStyle().set("font-weight", "600")
+                               .set("color", "var(--lumo-primary-text-color)");
+                
+                matchRow.add(matchInfo, score);
+                matchsLayout.add(matchRow);
+            }
+            
+            if (matches.size() > 5) {
+                Span plusDeMatchs = new Span("... et " + (matches.size() - 5) + " autre(s) match(s)");
+                plusDeMatchs.getStyle().set("font-size", "0.9em")
+                                      .set("color", "var(--lumo-secondary-text-color)")
+                                      .set("text-align", "center");
+                matchsLayout.add(plusDeMatchs);
+            }
+        }
+        
+        matchsCard.add(matchsLayout);
+
         // Bouton fermer
         Button fermer = new Button("Fermer", e -> dialog.close());
         fermer.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         fermer.addClassName("avatar-dialog-close-button");
 
-        contenu.add(avatarGrand, nomComplet, infoCard, fermer);
+        contenu.add(avatarGrand, nomComplet, infoCard, titreMatchs, matchsCard, fermer);
         dialog.add(contenu);
         dialog.open();
     }
@@ -316,5 +380,81 @@ public class VueJoueur_alle extends VerticalLayout {
             return "Non spécifié";
         }
         return str.substring(0, 1).toUpperCase() + str.substring(1).toLowerCase();
+    }
+
+    private List<MatchInfo> obtenirMatchsDuJoueur(int joueurId) {
+        List<MatchInfo> matches = new ArrayList<>();
+        
+        // Requête SQL pour obtenir les matchs du joueur avec les équipes et scores
+        String sql = """
+            SELECT DISTINCT
+                r.id as match_id,
+                r.score_a,
+                r.score_b,
+                r.played,
+                r.round_number,
+                CASE 
+                    WHEN je1.equipe_id = r.equipe_a_id THEN eb.nom_equipe
+                    ELSE ea.nom_equipe
+                END as adversaire,
+                CASE 
+                    WHEN r.score_a IS NOT NULL AND r.score_b IS NOT NULL 
+                    THEN CONCAT(r.score_a, ' - ', r.score_b)
+                    ELSE 'Score non défini'
+                END as score
+            FROM rencontre r
+            JOIN equipe ea ON r.equipe_a_id = ea.id
+            LEFT JOIN equipe eb ON r.equipe_b_id = eb.id
+            JOIN joueur_equipe je1 ON (je1.equipe_id = r.equipe_a_id OR je1.equipe_id = r.equipe_b_id)
+            WHERE je1.joueur_id = ?
+            ORDER BY r.round_number DESC, r.id DESC
+            """;
+        
+        try (Connection connection = ConnectionPool.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, joueurId);
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    String roundInfo = "Round " + rs.getInt("round_number");
+                    boolean played = rs.getBoolean("played");
+                    String statut = played ? "Terminé" : "À venir";
+                    String adversaire = rs.getString("adversaire") != null ? 
+                                       rs.getString("adversaire") : "Équipe inconnue";
+                    String score = rs.getString("score") != null ? 
+                                  rs.getString("score") : "Score non défini";
+                    
+                    matches.add(new MatchInfo(adversaire, statut, score, roundInfo));
+                }
+            }
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+            // Ajouter un match d'erreur pour informer l'utilisateur
+            matches.add(new MatchInfo("Erreur", "Erreur de chargement", "N/A", "N/A"));
+        }
+        
+        return matches;
+    }
+
+    // Classe interne pour représenter les données d'un match
+    private static class MatchInfo {
+        private final String adversaire;
+        private final String statut;
+        private final String score;
+        private final String date;
+
+        public MatchInfo(String adversaire, String statut, String score, String date) {
+            this.adversaire = adversaire;
+            this.statut = statut;
+            this.score = score;
+            this.date = date;
+        }
+
+        public String getAdversaire() { return adversaire; }
+        public String getStatut() { return statut; }
+        public String getScore() { return score; }
+        public String getDate() { return date; }
     }
 }

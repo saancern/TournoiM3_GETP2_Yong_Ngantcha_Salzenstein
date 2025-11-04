@@ -574,7 +574,9 @@ vaadin-router-link {
 
 /* ===== AVATAR DIALOG STYLES ===== */
 .avatar-dialog {
-  width: 400px;
+  width: 450px;
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 .avatar-dialog-content {
@@ -592,6 +594,13 @@ vaadin-router-link {
 .avatar-dialog-info-card {
   padding: var(--lumo-space-m);
   width: 100%;
+}
+
+.avatar-dialog-matches-card {
+  padding: var(--lumo-space-m);
+  width: 100%;
+  max-height: 250px;
+  overflow-y: auto;
 }
 
 .avatar-dialog-info-row {
