@@ -62,6 +62,29 @@ public class GestionBdD {
                 + " joueur_id int not null,"
                 + " equipe_id int not null,"
                 + " primary key (joueur_id, equipe_id)"
+                + ") ",
+            
+            // Table rencontre (matches) - dépend de tournoi et equipe
+            "create table rencontre ( "
+                + ConnectionPool.sqlForGeneratedKeys(con, "id") + ","
+                + " tournoi_id int not null,"
+                + " round_number int not null,"
+                + " pool_index int,"
+                + " equipe_a_id int not null,"
+                + " equipe_b_id int,"
+                + " score_a int,"
+                + " score_b int,"
+                + " winner_id int,"
+                + " played boolean not null default false"
+                + ") ",
+            
+            // Table but (goals) - dépend de rencontre, equipe et joueur
+            "create table but ( "
+                + ConnectionPool.sqlForGeneratedKeys(con, "id") + ","
+                + " rencontre_id int not null,"
+                + " equipe_id int not null,"
+                + " joueur_id int not null,"
+                + " minute int"
                 + ") "
         };
         
@@ -71,11 +94,34 @@ public class GestionBdD {
                 + " foreign key (joueur_id) references joueur(id) on delete cascade",
             
             "alter table joueur_equipe add constraint fk_joueur_equipe_equipe "
-                + " foreign key (equipe_id) references equipe(id) on delete cascade"
+                + " foreign key (equipe_id) references equipe(id) on delete cascade",
+            
+            "alter table rencontre add constraint fk_rencontre_tournoi "
+                + " foreign key (tournoi_id) references tournoi(id) on delete cascade",
+            
+            "alter table rencontre add constraint fk_rencontre_equipe_a "
+                + " foreign key (equipe_a_id) references equipe(id) on delete cascade",
+            
+            "alter table rencontre add constraint fk_rencontre_equipe_b "
+                + " foreign key (equipe_b_id) references equipe(id) on delete cascade",
+            
+            "alter table rencontre add constraint fk_rencontre_winner "
+                + " foreign key (winner_id) references equipe(id) on delete set null",
+            
+            "alter table but add constraint fk_but_rencontre "
+                + " foreign key (rencontre_id) references rencontre(id) on delete cascade",
+            
+            "alter table but add constraint fk_but_equipe "
+                + " foreign key (equipe_id) references equipe(id) on delete cascade",
+            
+            "alter table but add constraint fk_but_joueur "
+                + " foreign key (joueur_id) references joueur(id) on delete cascade"
         };
         
-        String[] tableNames = {"utilisateur", "joueur", "equipe", "tournoi", "joueur_equipe"};
-        String[] constraintNames = {"fk_joueur_equipe_joueur", "fk_joueur_equipe_equipe"};
+        String[] tableNames = {"utilisateur", "joueur", "equipe", "tournoi", "joueur_equipe", "rencontre", "but"};
+        String[] constraintNames = {"fk_joueur_equipe_joueur", "fk_joueur_equipe_equipe", 
+                                   "fk_rencontre_tournoi", "fk_rencontre_equipe_a", "fk_rencontre_equipe_b", 
+                                   "fk_rencontre_winner", "fk_but_rencontre", "fk_but_equipe", "fk_but_joueur"};
         
         boolean oldAutoCommit = con.getAutoCommit();
         SQLException lastException = null;
@@ -94,8 +140,18 @@ public class GestionBdD {
                         System.out.println("Table '" + tableNames[i] + "' créée avec succès.");
                         successCount++;
                     } catch (SQLException ex) {
-                        System.err.println("Erreur lors de la création de la table '" + tableNames[i] + "': " + ex.getMessage());
-                        lastException = ex;
+                        // Check if table already exists
+                        String errorMessage = ex.getMessage().toLowerCase();
+                        if (errorMessage.contains("already exists") || 
+                            errorMessage.contains("déjà exist") || 
+                            errorMessage.contains("table/view does not exist") ||
+                            errorMessage.contains("table") && errorMessage.contains("exist")) {
+                            System.out.println("Table '" + tableNames[i] + "' existe déjà.");
+                            successCount++; // Count as success since table exists
+                        } else {
+                            System.err.println("Erreur lors de la création de la table '" + tableNames[i] + "': " + ex.getMessage());
+                            lastException = ex;
+                        }
                         // Continuer avec les autres tables
                     }
                 }
@@ -108,8 +164,17 @@ public class GestionBdD {
                         System.out.println("Contrainte '" + constraintNames[i] + "' ajoutée avec succès.");
                         constraintCount++;
                     } catch (SQLException ex) {
-                        System.err.println("Erreur lors de l'ajout de la contrainte '" + constraintNames[i] + "': " + ex.getMessage());
-                        lastException = ex;
+                        // Check if constraint already exists
+                        String errorMessage = ex.getMessage().toLowerCase();
+                        if (errorMessage.contains("already exists") || 
+                            errorMessage.contains("déjà exist") || 
+                            errorMessage.contains("constraint") && errorMessage.contains("exist")) {
+                            System.out.println("Contrainte '" + constraintNames[i] + "' existe déjà.");
+                            constraintCount++; // Count as success since constraint exists
+                        } else {
+                            System.err.println("Erreur lors de l'ajout de la contrainte '" + constraintNames[i] + "': " + ex.getMessage());
+                            lastException = ex;
+                        }
                         // Continuer avec les autres contraintes
                     }
                 }
@@ -159,14 +224,23 @@ public class GestionBdD {
     public static void deleteSchema(Connection con) throws SQLException {
         // Définir les contraintes à supprimer d'abord
         String[] constraintQueries = {
+            "alter table but drop constraint if exists fk_but_rencontre",
+            "alter table but drop constraint if exists fk_but_equipe",
+            "alter table but drop constraint if exists fk_but_joueur",
+            "alter table rencontre drop constraint if exists fk_rencontre_tournoi",
+            "alter table rencontre drop constraint if exists fk_rencontre_equipe_a",
+            "alter table rencontre drop constraint if exists fk_rencontre_equipe_b",
+            "alter table rencontre drop constraint if exists fk_rencontre_winner",
             "alter table joueur_equipe drop constraint if exists fk_joueur_equipe_joueur",
             "alter table joueur_equipe drop constraint if exists fk_joueur_equipe_equipe"
         };
         
-        String[] constraintNames = {"fk_joueur_equipe_joueur", "fk_joueur_equipe_equipe"};
+        String[] constraintNames = {"fk_but_rencontre", "fk_but_equipe", "fk_but_joueur",
+                                   "fk_rencontre_tournoi", "fk_rencontre_equipe_a", "fk_rencontre_equipe_b", 
+                                   "fk_rencontre_winner", "fk_joueur_equipe_joueur", "fk_joueur_equipe_equipe"};
         
         // Définir les tables à supprimer dans l'ordre inverse des dépendances
-        String[] tableNames = {"joueur_equipe", "equipe", "joueur", "utilisateur"};
+        String[] tableNames = {"but", "rencontre", "joueur_equipe", "tournoi", "equipe", "joueur", "utilisateur"};
         
         int constraintCount = 0;
         int successCount = 0;
@@ -181,11 +255,21 @@ public class GestionBdD {
                     System.out.println("Contrainte '" + constraintNames[i] + "' supprimée avec succès.");
                     constraintCount++;
                 } catch (SQLException ex) {
-                    System.err.println("Erreur lors de la suppression de la contrainte '" + constraintNames[i] + "': " + ex.getMessage());
-                    if (errors.length() > 0) {
-                        errors.append("; ");
+                    // Check if constraint doesn't exist (which is OK for deletion)
+                    String errorMessage = ex.getMessage().toLowerCase();
+                    if (errorMessage.contains("does not exist") || 
+                        errorMessage.contains("n'existe pas") || 
+                        errorMessage.contains("not found") ||
+                        errorMessage.contains("constraint") && errorMessage.contains("not")) {
+                        System.out.println("Contrainte '" + constraintNames[i] + "' n'existait pas.");
+                        constraintCount++; // Count as success since constraint is gone
+                    } else {
+                        System.err.println("Erreur lors de la suppression de la contrainte '" + constraintNames[i] + "': " + ex.getMessage());
+                        if (errors.length() > 0) {
+                            errors.append("; ");
+                        }
+                        errors.append(constraintNames[i]).append(": ").append(ex.getMessage());
                     }
-                    errors.append(constraintNames[i]).append(": ").append(ex.getMessage());
                     // Continuer avec les autres contraintes
                 }
             }
@@ -198,11 +282,21 @@ public class GestionBdD {
                     System.out.println("Table '" + tableName + "' supprimée avec succès.");
                     successCount++;
                 } catch (SQLException ex) {
-                    System.err.println("Erreur lors de la suppression de la table '" + tableName + "': " + ex.getMessage());
-                    if (errors.length() > 0) {
-                        errors.append("; ");
+                    // Check if table doesn't exist (which is OK for deletion)
+                    String errorMessage = ex.getMessage().toLowerCase();
+                    if (errorMessage.contains("does not exist") || 
+                        errorMessage.contains("n'existe pas") || 
+                        errorMessage.contains("not found") ||
+                        errorMessage.contains("table") && errorMessage.contains("not")) {
+                        System.out.println("Table '" + tableName + "' n'existait pas.");
+                        successCount++; // Count as success since table is gone
+                    } else {
+                        System.err.println("Erreur lors de la suppression de la table '" + tableName + "': " + ex.getMessage());
+                        if (errors.length() > 0) {
+                            errors.append("; ");
+                        }
+                        errors.append(tableName).append(": ").append(ex.getMessage());
                     }
-                    errors.append(tableName).append(": ").append(ex.getMessage());
                     // Continuer avec les autres tables
                 }
             }
@@ -224,7 +318,7 @@ public class GestionBdD {
      * @param con
      */
     public static void checkSchemaStatus(Connection con) {
-        String[] tableNames = {"utilisateur", "joueur", "equipe", "joueur_equipe"};
+        String[] tableNames = {"utilisateur", "joueur", "equipe", "tournoi", "joueur_equipe", "rencontre", "but"};
         
         System.out.println("=== Statut des tables ===");
         try (Statement st = con.createStatement()) {

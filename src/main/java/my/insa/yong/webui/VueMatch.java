@@ -42,7 +42,7 @@ public class VueMatch extends BaseLayout {
     // Saisie des buts (semi-auto)
     private final Grid<GoalRow> goalsGrid = new Grid<>(GoalRow.class, false);
     private final ComboBox<JoueurRow> buteurSelect = new ComboBox<>("Buteur (A ou B)");
-    private final IntegerField minuteField = new IntegerField("Minute");
+    private final IntegerField minuteField = new IntegerField("Minute(s)");
     private final Button addGoalBtn = new Button("Ajouter but");
     private final Button clearGoalsBtn = new Button("Effacer tous les buts du match");
 
@@ -129,11 +129,11 @@ public class VueMatch extends BaseLayout {
         addLine.setAlignItems(Alignment.END);
 
         // Grid des buts
-        goalsGrid.addColumn(GoalRow::minute).setHeader("Min").setAutoWidth(true);
+        goalsGrid.addColumn(GoalRow::minute).setHeader("Minute(s)").setAutoWidth(true);
         goalsGrid.addColumn(GoalRow::equipeNom).setHeader("Équipe").setAutoWidth(true);
         goalsGrid.addColumn(GoalRow::joueurNom).setHeader("Buteur").setAutoWidth(true).setFlexGrow(1);
         goalsGrid.addComponentColumn(row -> {
-            Button b = new Button("Suppr", e -> onDeleteGoal(row.id()));
+            Button b = new Button("Supprimer", e -> onDeleteGoal(row.id()));
             b.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY_INLINE);
             return b;
         }).setHeader("Action").setAutoWidth(true);
@@ -281,8 +281,10 @@ public class VueMatch extends BaseLayout {
         }
 
         try (Connection con = ConnectionPool.getConnection()) {
-            // Add team ID parameter (0 for auto-detect)
-            GestionMatchs.addGoal(con, selectedMatch.id(), buteurSelect.getValue().id(), 0, minuteField.getValue());
+            // Get the team ID from the selected player
+            JoueurRow joueur = buteurSelect.getValue();
+            // Use the correct parameter order: (matchId, equipeId, joueurId, minute)
+            GestionMatchs.addGoal(con, selectedMatch.id(), joueur.equipeId(), joueur.id(), minuteField.getValue());
             reloadScoringPanel();
             refresh();  // Refresh to update top scorers
         } catch (SQLException ex) {
