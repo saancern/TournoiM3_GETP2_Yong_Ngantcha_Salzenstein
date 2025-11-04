@@ -4,6 +4,7 @@ import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.card.Card;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
@@ -61,12 +62,55 @@ public class VueJoueur_alle extends VerticalLayout {
 
         // Container pour les avatars avec layout responsive (left to right, top to bottom)
         avatarContainer.addClassName("avatar-grid");
-
-        add(titre, infoTournoi, avatarContainer);
+        
+        // ComboBox pour le tri
+        ComboBox<String> sortComboBox = new ComboBox<>("Trier par:");
+        sortComboBox.setItems("Nom", "Âge", "Taille", "Sexe", "Prénom");
+        sortComboBox.setValue("Nom"); // Valeur par défaut
+        sortComboBox.setWidth("200px");
+        
+        // Listener pour le changement de tri
+        sortComboBox.addValueChangeListener(event -> {
+            if (event.getValue() != null) {
+                chargerJoueurs(event.getValue());
+                rafraichirAvatars();
+            }
+        });
+        
+        add(titre, infoTournoi, sortComboBox, avatarContainer);
     }
 
     private void chargerJoueurs() {
-        String sql = "SELECT id, nom, prenom, age, sexe, taille FROM joueur ORDER BY nom, prenom";
+        chargerJoueurs("Nom"); // Tri par défaut
+    }
+    
+    private void chargerJoueurs(String sortBy) {
+        joueurs.clear(); // Vider la liste avant de recharger
+        
+        // Construire la clause ORDER BY selon le critère choisi
+        String orderByClause;
+        switch (sortBy) {
+            case "Nom":
+                orderByClause = "ORDER BY nom, prenom";
+                break;
+            case "Prénom":
+                orderByClause = "ORDER BY prenom, nom";
+                break;
+            case "Âge":
+                orderByClause = "ORDER BY age DESC, nom";
+                break;
+            case "Taille":
+                orderByClause = "ORDER BY taille DESC, nom";
+                break;
+            case "Sexe":
+                orderByClause = "ORDER BY sexe, nom, prenom";
+                break;
+            default:
+                orderByClause = "ORDER BY nom, prenom";
+                break;
+        }
+        
+        String sql = "SELECT id, nom, prenom, age, sexe, taille FROM joueur " + orderByClause;
         
         try (Connection connection = ConnectionPool.getConnection();
              PreparedStatement pstmt = connection.prepareStatement(sql);
@@ -122,6 +166,14 @@ public class VueJoueur_alle extends VerticalLayout {
             
             compteur++;
         }
+    }
+
+    private void rafraichirAvatars() {
+        // Vider le container des avatars
+        avatarContainer.removeAll();
+        
+        // Recréer les avatars avec les nouvelles données triées
+        creerAvatars();
     }
 
     private VerticalLayout creerAvatarCard(Joueur joueur) {
@@ -196,14 +248,14 @@ public class VueJoueur_alle extends VerticalLayout {
         infoLayout.setSpacing(true);
 
         // Informations du joueur
-        HorizontalLayout idInfo = creerInfoRow("ID", "#" + joueur.getId());
+        HorizontalLayout ageInfo = creerInfoRow("Âge", String.valueOf(joueur.getAge()));
         HorizontalLayout sexeInfo = creerInfoRow("Sexe", capitalizeFirst(joueur.getSexe()));
         
         // Rechercher les équipes du joueur
         String equipesText = obtenirEquipesDuJoueur(joueur.getId());
         HorizontalLayout equipesInfo = creerInfoRow("Équipes", equipesText);
 
-        infoLayout.add(idInfo, sexeInfo, equipesInfo);
+        infoLayout.add(ageInfo, sexeInfo, equipesInfo);
         infoCard.add(infoLayout);
 
         // Bouton fermer
