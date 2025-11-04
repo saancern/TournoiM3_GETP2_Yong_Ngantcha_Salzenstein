@@ -15,6 +15,7 @@ import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller;
@@ -194,7 +195,15 @@ public class BaseLayout extends AppLayout {
         // Update session with new tournament
         UserSession.setCurrentTournoi(tournoi.getId(), tournoi.getNomTournoi());
         
+        // Show a brief notification before reload
+        Notification.show("Changement vers: " + tournoi.getNomTournoi(), 1000, Notification.Position.TOP_CENTER);
+        
         // Reload page to update UI with new tournament
-        getUI().ifPresent(ui -> ui.getPage().reload());
+        getUI().ifPresent(ui -> {
+            // Small delay to ensure session is properly updated
+            ui.access(() -> {
+                ui.getPage().reload();
+            });
+        });
     }
 }
