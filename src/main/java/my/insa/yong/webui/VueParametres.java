@@ -323,13 +323,25 @@ public class VueParametres extends BaseLayout {
             // Sauvegarder le nouveau tournoi
             nouveauParametre.saveInDB(con);
             
+            // Créer les tables spécifiques au tournoi
+            int tournoiId = nouveauParametre.getId();
+            if (tournoiId > 1) { // Only create tournament-specific tables for new tournaments (not default)
+                try {
+                    GestionBdD.createTournamentTables(con, tournoiId);
+                    System.out.println("Tables du tournoi " + tournoiId + " créées automatiquement.");
+                } catch (SQLException ex) {
+                    System.err.println("Erreur lors de la création des tables du tournoi " + tournoiId + ": " + ex.getMessage());
+                    // Continue anyway - tournament is created, tables can be created later if needed
+                }
+            }
+            
             // Mettre à jour le paramètre actuel
             parametreActuel = nouveauParametre;
             
             // Mettre à jour la session avec le nouveau tournoi
             UserSession.setCurrentTournoi(parametreActuel.getId(), parametreActuel.getNomTournoi());
             
-            Notification.show("Nouveau tournoi créé avec succès!",
+            Notification.show("Nouveau tournoi créé avec succès! (ID: " + tournoiId + ")",
                              3000, Notification.Position.MIDDLE)
                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             

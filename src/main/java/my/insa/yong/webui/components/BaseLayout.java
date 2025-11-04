@@ -38,7 +38,8 @@ public class BaseLayout extends AppLayout {
     
     private void createHeader() {
         String tournoiName = UserSession.getCurrentTournoiName();
-        H1 appName = new H1("Gestion de " + tournoiName);
+        int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+        H1 appName = new H1("Gestion de " + tournoiName + " (ID: " + tournoiId + ")");
         appName.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.Margin.NONE);
         
         HorizontalLayout header = new HorizontalLayout();
