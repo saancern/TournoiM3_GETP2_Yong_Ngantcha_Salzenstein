@@ -1,21 +1,21 @@
 package my.insa.yong.webui;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
-import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
-import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.IntegerField;
@@ -24,7 +24,10 @@ import com.vaadin.flow.router.Route;
 
 import my.insa.yong.model.GestionMatchs;
 import my.insa.yong.model.GestionMatchs.ButeurRow;
+import my.insa.yong.model.GestionMatchs.GoalRow;
+import my.insa.yong.model.GestionMatchs.JoueurRow;
 import my.insa.yong.model.GestionMatchs.MatchRow;
+import my.insa.yong.model.GestionMatchs.TeamRow;
 import my.insa.yong.model.UserSession;
 import my.insa.yong.utils.database.ConnectionPool;
 import my.insa.yong.webui.components.BaseLayout;
@@ -36,23 +39,46 @@ public class VueMatch extends BaseLayout {
     private final Grid<MatchRow> grid = new Grid<>(MatchRow.class, false);
     private final Grid<ButeurRow> topGrid = new Grid<>(ButeurRow.class, false);
 
-    private final Button nextRoundBtn = new Button("Round suivante");
+    // Saisie des buts (semi-auto)
+    private final Grid<GoalRow> goalsGrid = new Grid<>(GoalRow.class, false);
+    private final ComboBox<JoueurRow> buteurSelect = new ComboBox<>("Buteur (A ou B)");
+    private final IntegerField minuteField = new IntegerField("Minute");
+    private final Button addGoalBtn = new Button("Ajouter but");
+    private final Button clearGoalsBtn = new Button("Effacer tous les buts du match");
+
+    // Tirage & reset
+    private final Button drawRoundBtn = new Button("Tirage round suivant (aléatoire)");
     private final Button resetBtn = new Button("Réinitialiser les matchs");
+
+    private final IntegerField scoreAField = new IntegerField("Score A (calculé)");
+    private final IntegerField scoreBField = new IntegerField("Score B (calculé)");
+
     private H2 title;
+
+    // cache pour retrouver TeamRow à partir de l'id (pour libellés)
+    private final Map<Integer, TeamRow> teamById = new HashMap<>();
+
+    // match sélectionné
+    private MatchRow selectedMatch = null;
 
     public VueMatch() {
         String tournoiName = UserSession.getCurrentTournoiName();
         title = new H2("Matchs — " + tournoiName);
 
-        nextRoundBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        // Boutons
+        drawRoundBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         resetBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
+        addGoalBtn.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
+        clearGoalsBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
 
-        nextRoundBtn.addClickListener(e -> onNextRound());
+        drawRoundBtn.addClickListener(e -> onNextRound());
         resetBtn.addClickListener(e -> onReset());
+        addGoalBtn.addClickListener(e -> onAddGoal());
+        clearGoalsBtn.addClickListener(e -> onClearGoals());
 
-        HorizontalLayout actions = new HorizontalLayout(nextRoundBtn, resetBtn);
+        HorizontalLayout actions = new HorizontalLayout(drawRoundBtn, resetBtn);
 
-        // --- Grille des matchs (ajout des colonnes buteurs) ---
+        // --- Grille des matchs ---
         grid.addColumn(MatchRow::round).setHeader("Round").setAutoWidth(true);
         grid.addColumn(r -> r.poolIndex() == null ? "—" : String.valueOf(r.poolIndex()))
             .setHeader("Pool").setAutoWidth(true);
@@ -68,37 +94,83 @@ public class VueMatch extends BaseLayout {
         grid.addColumn(MatchRow::buteursB).setHeader("Buteurs B").setAutoWidth(true).setFlexGrow(1);
         grid.setSizeFull();
 
+        // Sélection d'un match => charge joueurs + buts
+        grid.asSingleSelect().addValueChangeListener(ev -> {
+            selectedMatch = ev.getValue();
+            reloadScoringPanel();
+        });
+
         // --- Classement des buteurs ---
         H3 topTitle = new H3("Classement des buteurs");
         topGrid.addColumn(ButeurRow::joueurNom).setHeader("Joueur").setAutoWidth(true);
         topGrid.addColumn(ButeurRow::equipeNom).setHeader("Équipe").setAutoWidth(true);
         topGrid.addColumn(ButeurRow::buts).setHeader("Buts").setAutoWidth(true);
-        topGrid.setAllRowsVisible(true);
+        topGrid.setHeight("320px");
         grid.setSizeFull();
-        topGrid.setSizeFull();
 
-        // Empêche le "min-height:auto" qui casse le flex sous Chrome
+        // --- Panneau « Saisie des buteurs » ---
+        H3 scoringTitle = new H3("Saisie des buteurs (mode semi-auto)");
+
+        buteurSelect.setItemLabelGenerator(j -> j.nom() + " — " + j.equipeNom());
+        buteurSelect.setWidth("320px");
+
+        minuteField.setMin(0);
+        minuteField.setMax(130);
+        minuteField.setPlaceholder("ex. 42");
+        minuteField.setWidth("120px");
+
+        scoreAField.setReadOnly(true);
+        scoreBField.setReadOnly(true);
+        scoreAField.setWidth("130px");
+        scoreBField.setWidth("130px");
+
+        HorizontalLayout addLine = new HorizontalLayout(buteurSelect, minuteField, addGoalBtn, clearGoalsBtn, scoreAField, scoreBField);
+        addLine.setSpacing(true);
+        addLine.setAlignItems(Alignment.END);
+
+        // Grid des buts
+        goalsGrid.addColumn(GoalRow::minute).setHeader("Min").setAutoWidth(true);
+        goalsGrid.addColumn(GoalRow::equipeNom).setHeader("Équipe").setAutoWidth(true);
+        goalsGrid.addColumn(GoalRow::joueurNom).setHeader("Buteur").setAutoWidth(true).setFlexGrow(1);
+        goalsGrid.addComponentColumn(row -> {
+            Button b = new Button("Suppr", e -> onDeleteGoal(row.id()));
+            b.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY_INLINE);
+            return b;
+        }).setHeader("Action").setAutoWidth(true);
+        goalsGrid.setHeight("200px");
+
+        // Empêche le "min-height:auto"
         grid.getElement().getStyle().set("min-height", "0");
         topGrid.getElement().getStyle().set("min-height", "0");
+        goalsGrid.getElement().getStyle().set("min-height", "0");
 
-        // Mets les deux grilles dans un conteneur dédié qui prend tout l’espace
-        VerticalLayout gridsArea = new VerticalLayout(grid, topTitle, topGrid);
-        gridsArea.setPadding(false);
-        gridsArea.setSpacing(true);
-        gridsArea.setSizeFull();
+        VerticalLayout scoringLayout = new VerticalLayout(scoringTitle, addLine, goalsGrid);
+        scoringLayout.setPadding(false);
+        scoringLayout.setSpacing(true);
+        scoringLayout.setSizeFull();
 
-        // 50/50 entre les deux grilles (le H3 ne s’étire pas)
-        gridsArea.setFlexGrow(1, grid);
-        gridsArea.setFlexGrow(0, topTitle);
-        gridsArea.setFlexGrow(1, topGrid);
+        // Zone des grilles principales
+        VerticalLayout gridsLayout = new VerticalLayout(grid, topTitle, topGrid);
+        gridsLayout.setPadding(false);
+        gridsLayout.setSpacing(true);
+        gridsLayout.setSizeFull();
+        gridsLayout.setFlexGrow(1, grid);
+        gridsLayout.setFlexGrow(0, topTitle);
+        gridsLayout.setFlexGrow(1, topGrid);
 
-        // Recompose le layout principal
-        VerticalLayout content = new VerticalLayout(title, actions, gridsArea);
-        content.setSizeFull();
-        content.setFlexGrow(1, gridsArea);      // tout l’espace dispo va à la zone des grilles
-        content.setFlexGrow(0, title, actions); // titres/boutons gardent leur taille
-        setContent(content);
-        refresh();
+        // Layout principal
+        VerticalLayout mainContent = new VerticalLayout(title, actions, scoringLayout, gridsLayout);
+        mainContent.setSizeFull();
+        mainContent.setFlexGrow(0, title, actions, scoringLayout);
+        mainContent.setFlexGrow(1, gridsLayout);
+        setContent(mainContent);
+
+        refresh(); // charge grilles + combos
+    }
+
+    private void notifySql(SQLException ex) {
+        Notification.show("Erreur SQL: " + ex.getMessage(), 3000, Notification.Position.TOP_CENTER)
+            .addThemeVariants(NotificationVariant.LUMO_ERROR);
     }
 
     private void refresh() {
@@ -113,6 +185,14 @@ public class VueMatch extends BaseLayout {
             List<ButeurRow> top = GestionMatchs.getTopScorers(con, tournoiId, 50);
             topGrid.setItems(top);
 
+            // Equipes (cache)
+            teamById.clear();
+            List<TeamRow> teams = GestionMatchs.listEquipes(con);
+            for (TeamRow t : teams) teamById.put(t.id(), t);
+
+            // Si un match est sélectionné, recharger son panneau
+            reloadScoringPanel();
+
             Optional<Integer> championId = GestionMatchs.getChampion(con, tournoiId);
             if (championId.isPresent()) {
                 String champion = rows.stream()
@@ -125,232 +205,114 @@ public class VueMatch extends BaseLayout {
                 n.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             }
         } catch (SQLException ex) {
-            Notification n = Notification.show("Erreur: " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER);
-            n.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            notifySql(ex);
+        }
+    }
+
+    private void reloadScoringPanel() {
+        if (selectedMatch == null) {
+            buteurSelect.clear();
+            buteurSelect.setItems(List.of());
+            goalsGrid.setItems(List.of());
+            scoreAField.clear();
+            scoreBField.clear();
+            return;
+        }
+        try (Connection con = ConnectionPool.getConnection()) {
+            // Lister joueurs des 2 équipes pour ce match
+            List<JoueurRow> joueurs = GestionMatchs.listPlayersForMatch(con, selectedMatch.id());
+            buteurSelect.setItems(joueurs);
+
+            // Lister les buts du match
+            List<GoalRow> buts = GestionMatchs.listGoalsForMatch(con, selectedMatch.id());
+            goalsGrid.setItems(buts);
+
+            // Mettre à jour affichage des scores (déjà recalculés côté modèle)
+            List<MatchRow> one = GestionMatchs.listAllMatches(con, UserSession.getCurrentTournoiId().orElse(1));
+            // retrouver cette ligne
+            one.stream().filter(m -> m.id() == selectedMatch.id()).findFirst().ifPresent(m -> {
+                Integer scoreA = m.scoreA();
+                Integer scoreB = m.scoreB();
+                scoreAField.setValue(scoreA != null ? scoreA : 0);
+                scoreBField.setValue(scoreB != null ? scoreB : 0);
+                selectedMatch = m; // tenir en phase (played/winner)
+            });
+        } catch (SQLException ex) {
+            notifySql(ex);
         }
     }
 
     private void onNextRound() {
         try (Connection con = ConnectionPool.getConnection()) {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-            
-            // Vérifier s'il y a des matchs en cours qui nécessitent la saisie des scores
-            List<MatchRow> unplayedMatches = getUnplayedMatches(con, tournoiId);
-            
-            if (!unplayedMatches.isEmpty()) {
-                // Afficher le popup pour modifier les scores
-                showScoreModificationDialog(unplayedMatches, () -> {
-                    // Callback appelé après confirmation des scores
-                    proceedWithNextRound();
-                });
-            } else {
-                // Aucun match en attente, procéder directement
-                proceedWithNextRound();
-            }
-            
-        } catch (SQLException ex) {
-            Notification n = Notification.show("Erreur: " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER);
-            n.addThemeVariants(NotificationVariant.LUMO_ERROR);
-        }
-    }
 
-    private void proceedWithNextRound() {
-        try (Connection con = ConnectionPool.getConnection()) {
-            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-            String result = GestionMatchs.nextStep(con, tournoiId);
-            Notification.show(result, 3000, Notification.Position.TOP_CENTER);
+            // Si des matchs du round courant ne sont pas joués, prévenir plutôt que de les "jouer"
+            int cur = GestionMatchs.getCurrentRound(con, tournoiId);
+            if (cur > 0 && GestionMatchs.hasUnplayedMatchesPublic(con, tournoiId, cur)) {
+                Notification n = Notification.show("Il reste des matchs non saisis au round " + cur + ".", 4000, Notification.Position.TOP_CENTER);
+                n.addThemeVariants(NotificationVariant.LUMO_CONTRAST);
+                return;
+            }
+
+            GestionMatchs.generateNextRound(con, tournoiId);
+            Notification.show("Round " + (cur + 1) + " généré.", 2500, Notification.Position.TOP_CENTER);
             refresh();
         } catch (SQLException ex) {
-            Notification n = Notification.show("Erreur: " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER);
-            n.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            notifySql(ex);
         }
     }
 
     private void onReset() {
         try (Connection con = ConnectionPool.getConnection()) {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            // Replace resetTournoi with resetMatches
             GestionMatchs.resetMatches(con, tournoiId);
-            Notification n = Notification.show("Matchs réinitialisés pour ce tournoi.", 3000, Notification.Position.TOP_CENTER);
-            n.addThemeVariants(NotificationVariant.LUMO_CONTRAST);
             refresh();
         } catch (SQLException ex) {
-            Notification n = Notification.show("Erreur: " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER);
-            n.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            notifySql(ex);
         }
     }
 
-    private List<MatchRow> getUnplayedMatches(Connection con, int tournoiId) throws SQLException {
-        List<MatchRow> allMatches = GestionMatchs.listAllMatches(con, tournoiId);
-        return allMatches.stream()
-                .filter(match -> !match.played() && 
-                        match.equipeAId() != null && 
-                        match.equipeBId() != null)
-                .toList();
-    }
-
-    private void showScoreModificationDialog(List<MatchRow> unplayedMatches, Runnable onConfirm) {
-        Dialog dialog = new Dialog();
-        dialog.setWidth("600px");
-        dialog.setCloseOnEsc(false);
-        dialog.setCloseOnOutsideClick(false);
-        dialog.addClassName("score-dialog");
-
-        VerticalLayout content = new VerticalLayout();
-        content.setPadding(true);
-        content.setSpacing(true);
-        content.addClassName("score-dialog-content");
-
-        H4 title = new H4("Modification des scores");
-        title.addClassName("score-dialog-title");
-        content.add(title);
-
-        // Container pour les matchs
-        VerticalLayout matchesContainer = new VerticalLayout();
-        matchesContainer.setPadding(false);
-        matchesContainer.setSpacing(true);
-
-        // Map pour stocker les champs de score
-        java.util.Map<Integer, IntegerField> scoreAFields = new java.util.HashMap<>();
-        java.util.Map<Integer, IntegerField> scoreBFields = new java.util.HashMap<>();
-        
-        // Générateur de nombres aléatoires pour les scores pré-remplis
-        java.util.Random random = new java.util.Random();
-
-        for (MatchRow match : unplayedMatches) {
-            HorizontalLayout matchLayout = new HorizontalLayout();
-            matchLayout.setWidthFull();
-            matchLayout.setAlignItems(FlexComponent.Alignment.CENTER);
-            matchLayout.setSpacing(true);
-            matchLayout.addClassName("score-match-row");
-
-            // Générer des scores aléatoires (0-5) pour pré-remplir
-            int randomScoreA = random.nextInt(6); // 0 à 5
-            int randomScoreB;
-            do {
-                randomScoreB = random.nextInt(6); // 0 à 5
-            } while (randomScoreB == randomScoreA); // Éviter les égalités
-
-            // Nom de l'équipe A
-            VerticalLayout teamALayout = new VerticalLayout();
-            teamALayout.setPadding(false);
-            teamALayout.setSpacing(false);
-            teamALayout.setAlignItems(FlexComponent.Alignment.CENTER);
-            teamALayout.addClassName("score-team-container");
-            H4 teamAName = new H4(match.equipeAName());
-            teamAName.addClassName("score-team-name");
-            IntegerField scoreAField = new IntegerField();
-            scoreAField.setValue(match.scoreA() != null ? match.scoreA() : randomScoreA);
-            scoreAField.setMin(0);
-            scoreAField.setWidth("80px");
-            scoreAField.addClassName("score-input");
-            teamALayout.add(teamAName, scoreAField);
-            scoreAFields.put(match.id(), scoreAField);
-
-            // VS
-            H4 vs = new H4("VS");
-            vs.addClassName("score-vs");
-
-            // Nom de l'équipe B
-            VerticalLayout teamBLayout = new VerticalLayout();
-            teamBLayout.setPadding(false);
-            teamBLayout.setSpacing(false);
-            teamBLayout.setAlignItems(FlexComponent.Alignment.CENTER);
-            teamBLayout.addClassName("score-team-container");
-            H4 teamBName = new H4(match.equipeBName());
-            teamBName.addClassName("score-team-name");
-            IntegerField scoreBField = new IntegerField();
-            scoreBField.setValue(match.scoreB() != null ? match.scoreB() : randomScoreB);
-            scoreBField.setMin(0);
-            scoreBField.setWidth("80px");
-            scoreBField.addClassName("score-input");
-            teamBLayout.add(teamBName, scoreBField);
-            scoreBFields.put(match.id(), scoreBField);
-
-            matchLayout.add(teamALayout, vs, teamBLayout);
-            matchLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
-
-            matchesContainer.add(matchLayout);
+    private void onAddGoal() {
+        if (selectedMatch == null || buteurSelect.getValue() == null || minuteField.getValue() == null) {
+            Notification.show("Veuillez sélectionner un match, un buteur et une minute", 3000, Notification.Position.TOP_CENTER)
+                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            return;
         }
 
-        content.add(matchesContainer);
-
-        // Boutons
-        HorizontalLayout buttonLayout = new HorizontalLayout();
-        buttonLayout.addClassName("score-dialog-buttons");
-        buttonLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
-        buttonLayout.setSpacing(true);
-
-        Button cancelButton = new Button("Annuler", e -> dialog.close());
-        cancelButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-
-        Button confirmButton = new Button("Confirmer et fermer les matchs", e -> {
-            saveMatchScores(unplayedMatches, scoreAFields, scoreBFields);
-            dialog.close();
-            onConfirm.run();
-        });
-        confirmButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-
-        buttonLayout.add(cancelButton, confirmButton);
-        content.add(buttonLayout);
-
-        dialog.add(content);
-        dialog.open();
-    }
-
-    private void saveMatchScores(List<MatchRow> matches, 
-                                java.util.Map<Integer, IntegerField> scoreAFields,
-                                java.util.Map<Integer, IntegerField> scoreBFields) {
         try (Connection con = ConnectionPool.getConnection()) {
-            con.setAutoCommit(false);
-            
-            String updateSQL = "UPDATE rencontre SET score_a = ?, score_b = ?, winner_id = ?, played = true WHERE id = ?";
-            
-            try (PreparedStatement pstmt = con.prepareStatement(updateSQL)) {
-                for (MatchRow match : matches) {
-                    IntegerField scoreAField = scoreAFields.get(match.id());
-                    IntegerField scoreBField = scoreBFields.get(match.id());
-                    
-                    Integer scoreA = scoreAField.getValue();
-                    Integer scoreB = scoreBField.getValue();
-                    
-                    if (scoreA == null) scoreA = 0;
-                    if (scoreB == null) scoreB = 0;
-                    
-                    // Déterminer le gagnant (pas d'égalité autorisée)
-                    Integer winnerId;
-                    if (scoreA > scoreB) {
-                        winnerId = match.equipeAId();
-                    } else if (scoreB > scoreA) {
-                        winnerId = match.equipeBId();
-                    } else {
-                        // En cas d'égalité, donner la victoire à l'équipe A par défaut
-                        // Ou vous pourriez demander à l'utilisateur de modifier
-                        winnerId = match.equipeAId();
-                        scoreA = scoreA + 1; // Ajuster le score pour éviter l'égalité
-                    }
-                    
-                    pstmt.setInt(1, scoreA);
-                    pstmt.setInt(2, scoreB);
-                    pstmt.setInt(3, winnerId);
-                    pstmt.setInt(4, match.id());
-                    pstmt.addBatch();
-                }
-                
-                pstmt.executeBatch();
-                con.commit();
-                
-                Notification.show("Scores mis à jour avec succès!", 3000, Notification.Position.TOP_CENTER)
-                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                    
-            } catch (SQLException e) {
-                con.rollback();
-                throw e;
-            }
-            
+            // Add team ID parameter (0 for auto-detect)
+            GestionMatchs.addGoal(con, selectedMatch.id(), buteurSelect.getValue().id(), 0, minuteField.getValue());
+            reloadScoringPanel();
+            refresh();  // Refresh to update top scorers
         } catch (SQLException ex) {
-            Notification n = Notification.show("Erreur lors de la sauvegarde: " + ex.getMessage(), 
-                                             4000, Notification.Position.TOP_CENTER);
-            n.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            notifySql(ex);
+        }
+    }
+
+    private void onClearGoals() {
+        if (selectedMatch == null) {
+            Notification.show("Aucun match sélectionné", 3000, Notification.Position.TOP_CENTER)
+                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            return;
+        }
+
+        try (Connection con = ConnectionPool.getConnection()) {
+            GestionMatchs.clearGoalsForMatch(con, selectedMatch.id());
+            reloadScoringPanel();
+            refresh();  // Refresh to update top scorers
+        } catch (SQLException ex) {
+            notifySql(ex);
+        }
+    }
+
+    private void onDeleteGoal(int goalId) {
+        try (Connection con = ConnectionPool.getConnection()) {
+            GestionMatchs.deleteGoal(con, goalId);
+            reloadScoringPanel();
+            refresh();  // Refresh to update top scorers
+        } catch (SQLException ex) {
+            notifySql(ex);
         }
     }
 }
