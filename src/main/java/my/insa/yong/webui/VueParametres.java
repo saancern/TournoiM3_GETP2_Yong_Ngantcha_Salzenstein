@@ -404,9 +404,11 @@ public class VueParametres extends BaseLayout {
                 System.out.println("Données du tournoi par défaut réinitialisées.");
                 
             } else {
-                // Pour les tournois spécifiques (ID > 1), supprimer les tables spécifiques
-                GestionBdD.deleteTournamentTables(con, currentTournoiId);
-                System.out.println("Tables du tournoi " + currentTournoiId + " supprimées.");
+                // Pour les tournois spécifiques (ID > 1), suppression complète (tables + entrée dans tournoi)
+                GestionBdD.deleteTournamentCompletely(con, currentTournoiId);
+                
+                // Revenir au tournoi par défaut après suppression
+                UserSession.setCurrentTournoi(1, "Tournoi");
             }
             
             Notification.show("Tournoi réinitialisé avec succès!",

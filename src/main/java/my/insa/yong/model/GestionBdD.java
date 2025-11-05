@@ -1,6 +1,7 @@
 package my.insa.yong.model;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -663,6 +664,37 @@ public class GestionBdD {
             }
         }
         return true; // All tables exist
+    }
+    
+    /**
+     * Completely deletes a tournament: both tournament-specific tables and the entry in tournoi table
+     * @param con Database connection
+     * @param tournoiId Tournament ID (cannot be 1, the default tournament)
+     * @throws SQLException If deletion fails
+     */
+    public static void deleteTournamentCompletely(Connection con, int tournoiId) throws SQLException {
+        if (tournoiId == 1) {
+            throw new SQLException("Le tournoi par défaut (ID=1) ne peut pas être supprimé complètement.");
+        }
+        
+        System.out.println("=== Suppression complète du tournoi " + tournoiId + " ===");
+        
+        // Delete the entry from tournoi table first (this will trigger CASCADE delete for rencontre_X entries)
+        String deleteTournoiSql = "DELETE FROM tournoi WHERE id = ?";
+        try (PreparedStatement pst = con.prepareStatement(deleteTournoiSql)) {
+            pst.setInt(1, tournoiId);
+            int rows = pst.executeUpdate();
+            if (rows > 0) {
+                System.out.println("Entrée du tournoi " + tournoiId + " supprimée de la table tournoi (CASCADE activé).");
+            } else {
+                System.out.println("Aucune entrée trouvée pour le tournoi " + tournoiId + " dans la table tournoi.");
+            }
+        }
+        
+        // Then delete tournament-specific tables (they should now be mostly empty due to CASCADE)
+        deleteTournamentTables(con, tournoiId);
+        
+        System.out.println("Tournoi " + tournoiId + " supprimé complètement (entrée + tables).");
     }
 
 }
