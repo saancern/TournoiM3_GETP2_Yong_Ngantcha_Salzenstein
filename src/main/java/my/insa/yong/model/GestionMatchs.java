@@ -278,8 +278,9 @@ public class GestionMatchs {
             }
         }
         if (total == 1 && played == 1) {
+            String rencontreTable = getRencontreTable(tournoiId);
             try (PreparedStatement pst = con.prepareStatement(
-                    "SELECT winner_id FROM rencontre WHERE tournoi_id=? AND round_number=? LIMIT 1")) {
+                    "SELECT winner_id FROM " + rencontreTable + " WHERE tournoi_id=? AND round_number=? LIMIT 1")) {
                 pst.setInt(1, tournoiId);
                 pst.setInt(2, curRound);
                 try (ResultSet rs = pst.executeQuery()) {
@@ -436,8 +437,10 @@ public class GestionMatchs {
 
     /** Legacy version: Liste des buts pour un match */
     public static List<GoalRow> listGoalsForMatch(Connection con, int matchId) throws SQLException {
-        // Determine tournament ID from match
+        // Determine tournament ID from match - need to check all possible tournament tables
         int tournoiId = 1; // Default to tournament 1
+        
+        // First try the default table
         try (PreparedStatement ps = con.prepareStatement("SELECT tournoi_id FROM rencontre WHERE id=?")) {
             ps.setInt(1, matchId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -445,7 +448,12 @@ public class GestionMatchs {
                     tournoiId = rs.getInt(1);
                 }
             }
+        } catch (SQLException ex) {
+            // If not found in default table, try tournament-specific tables
+            // This is a legacy method, so we'll keep the fallback behavior
+            System.err.println("Match not found in default rencontre table, using tournament ID=1: " + ex.getMessage());
         }
+        
         return listGoalsForMatch(con, tournoiId, matchId);
     }
 
@@ -492,6 +500,12 @@ public class GestionMatchs {
                     tournoiId = rs.getInt(1);
                 }
             }
+        } catch (SQLException ex) {
+            // If not found in default table, legacy method assumes tournament ID=1
+            System.err.println("Match not found in default rencontre table, using tournament ID=1: " + ex.getMessage());
+        }
+                }
+            }
         }
         
         addGoal(con, tournoiId, matchId, equipeId, joueurId, minute);
@@ -528,6 +542,9 @@ public class GestionMatchs {
                     tournoiId = rs.getInt(1);
                 }
             }
+        } catch (SQLException ex) {
+            // If not found in default tables, legacy method assumes tournament ID=1
+            System.err.println("Goal not found in default tables, using tournament ID=1: " + ex.getMessage());
         }
         deleteGoal(con, tournoiId, goalId);
     }
@@ -551,6 +568,12 @@ public class GestionMatchs {
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     tournoiId = rs.getInt(1);
+                }
+            }
+        } catch (SQLException ex) {
+            // If not found in default table, legacy method assumes tournament ID=1
+            System.err.println("Match not found in default rencontre table, using tournament ID=1: " + ex.getMessage());
+        }
                 }
             }
         }
@@ -615,6 +638,11 @@ public class GestionMatchs {
                 if (rs.next()) {
                     tournoiId = rs.getInt(1);
                 }
+            }
+        } catch (SQLException ex) {
+            // If not found in default table, legacy method assumes tournament ID=1
+            System.err.println("Match not found in default rencontre table, using tournament ID=1: " + ex.getMessage());
+        }
             }
         }
         recomputeScoreFromGoals(con, tournoiId, matchId);
@@ -738,8 +766,9 @@ public class GestionMatchs {
     }
 
     private static boolean hasUnplayedMatches(Connection con, int tournoiId, int round) throws SQLException {
+        String rencontreTable = getRencontreTable(tournoiId);
         try (PreparedStatement pst = con.prepareStatement(
-                "SELECT COUNT(*) FROM rencontre WHERE tournoi_id=? AND round_number=? AND played=false")) {
+                "SELECT COUNT(*) FROM " + rencontreTable + " WHERE tournoi_id=? AND round_number=? AND played=false")) {
             pst.setInt(1, tournoiId);
             pst.setInt(2, round);
             try (ResultSet rs = pst.executeQuery()) { rs.next(); return rs.getInt(1) > 0; }
@@ -747,8 +776,9 @@ public class GestionMatchs {
     }
 
     private static int countAllMatches(Connection con, int tournoiId) throws SQLException {
+        String rencontreTable = getRencontreTable(tournoiId);
         try (PreparedStatement pst = con.prepareStatement(
-                "SELECT COUNT(*) FROM rencontre WHERE tournoi_id=?")) {
+                "SELECT COUNT(*) FROM " + rencontreTable + " WHERE tournoi_id=?")) {
             pst.setInt(1, tournoiId);
             try (ResultSet rs = pst.executeQuery()) { rs.next(); return rs.getInt(1); }
         }

@@ -430,7 +430,9 @@ public class VueJoueur extends BaseLayout {
         }
 
         try (Connection con = ConnectionPool.getConnection()) {
-            String sql = "DELETE FROM joueur WHERE id = ?";
+            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            String joueurTable = tournoiId == 1 ? "joueur" : "joueur_" + tournoiId;
+            String sql = "DELETE FROM " + joueurTable + " WHERE id = ?";
             try (PreparedStatement pst = con.prepareStatement(sql)) {
                 pst.setInt(1, joueurSelectionne.getId());
                 

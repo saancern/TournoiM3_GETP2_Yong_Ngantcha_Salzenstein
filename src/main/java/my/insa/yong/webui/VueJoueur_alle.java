@@ -390,8 +390,14 @@ public class VueJoueur_alle extends VerticalLayout {
     private List<MatchInfo> obtenirMatchsDuJoueur(int joueurId) {
         List<MatchInfo> matches = new ArrayList<>();
         
+        // Get tournament-specific table names
+        int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+        String rencontreTable = tournoiId == 1 ? "rencontre" : "rencontre_" + tournoiId;
+        String equipeTable = tournoiId == 1 ? "equipe" : "equipe_" + tournoiId;
+        String joueurEquipeTable = tournoiId == 1 ? "joueur_equipe" : "joueur_equipe_" + tournoiId;
+        
         // Requête SQL pour obtenir les matchs du joueur avec les équipes et scores
-        String sql = """
+        String sql = String.format("""
             SELECT DISTINCT
                 r.id as match_id,
                 r.score_a,
@@ -407,13 +413,13 @@ public class VueJoueur_alle extends VerticalLayout {
                     THEN CONCAT(r.score_a, ' - ', r.score_b)
                     ELSE 'Score non défini'
                 END as score
-            FROM rencontre r
-            JOIN equipe ea ON r.equipe_a_id = ea.id
-            LEFT JOIN equipe eb ON r.equipe_b_id = eb.id
-            JOIN joueur_equipe je1 ON (je1.equipe_id = r.equipe_a_id OR je1.equipe_id = r.equipe_b_id)
+            FROM %s r
+            JOIN %s ea ON r.equipe_a_id = ea.id
+            LEFT JOIN %s eb ON r.equipe_b_id = eb.id
+            JOIN %s je1 ON (je1.equipe_id = r.equipe_a_id OR je1.equipe_id = r.equipe_b_id)
             WHERE je1.joueur_id = ?
             ORDER BY r.round_number DESC, r.id DESC
-            """;
+            """, rencontreTable, equipeTable, equipeTable, joueurEquipeTable);
         
         try (Connection connection = ConnectionPool.getConnection();
              PreparedStatement pstmt = connection.prepareStatement(sql)) {
