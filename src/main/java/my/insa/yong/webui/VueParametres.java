@@ -6,7 +6,6 @@ import java.sql.SQLException;
 
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.H3;
@@ -38,7 +37,6 @@ public class VueParametres extends BaseLayout {
     private TextField sportField;
     private NumberField nombreTerrainsField;
     private NumberField nombreJoueursParEquipeField;
-    private ComboBox<Parametre> tournoiSelector;
     
     private Parametre parametreActuel;
 
@@ -81,27 +79,6 @@ public class VueParametres extends BaseLayout {
         
         H3 parametresTitle = new H3("Configuration du Tournoi");
         parametresTitle.addClassName("section-title");
-        
-        // Sélecteur de tournoi
-        tournoiSelector = new ComboBox<>("Sélectionner un Tournoi");
-        tournoiSelector.setWidth("100%");
-        tournoiSelector.setItemLabelGenerator(p -> p.getNomTournoi() + " (" + p.getSport() + ")");
-        tournoiSelector.addValueChangeListener(e -> {
-            if (e.getValue() != null) {
-                chargerTournoi(e.getValue());
-            }
-        });
-        tournoiSelector.addClassName("form-input");
-        
-        // Bouton pour changer de tournoi
-        Button changerTournoiBtn = new Button("Changer de Tournoi");
-        changerTournoiBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
-        changerTournoiBtn.addClassName("btn-secondary");
-        changerTournoiBtn.addClickListener(e -> chargerListeTournois());
-        
-        HorizontalLayout tournoiSection = new HorizontalLayout(tournoiSelector, changerTournoiBtn);
-        tournoiSection.setAlignItems(Alignment.END);
-        tournoiSection.setSpacing(true);
         
         // Champ nom du tournoi
         nomTournoiField = new TextField("Nom du Tournoi");
@@ -149,7 +126,7 @@ public class VueParametres extends BaseLayout {
         boutonsParametres.setSpacing(true);
         boutonsParametres.addClassName("button-group");
         
-        parametresSection.add(parametresTitle, tournoiSection, nomTournoiField, sportField, nombreTerrainsField, 
+        parametresSection.add(parametresTitle, nomTournoiField, sportField, nombreTerrainsField, 
                              nombreJoueursParEquipeField, boutonsParametres);
         
         // Section de gestion des données
@@ -196,8 +173,9 @@ public class VueParametres extends BaseLayout {
 
     private void chargerParametresExistants() {
         try (Connection con = ConnectionPool.getConnection()) {
-            // Toujours charger le tournoi ID=1 par défaut
-            parametreActuel = Parametre.getParametreParId(con, 1);
+            // Charger le tournoi actuel depuis la session (ou ID=1 par défaut)
+            Integer currentTournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            parametreActuel = Parametre.getParametreParId(con, currentTournoiId);
             
             if (parametreActuel != null) {
                 // Charger les valeurs dans l'interface
@@ -210,12 +188,22 @@ public class VueParametres extends BaseLayout {
                 UserSession.setCurrentTournoi(parametreActuel.getId(), parametreActuel.getNomTournoi());
                 
             } else {
-                // Si aucun tournoi ID=1 n'existe, le créer
-                creerTournoiParDefautAvecId1(con);
+                // Si le tournoi actuel n'existe pas, fallback vers ID=1
+                parametreActuel = Parametre.getParametreParId(con, 1);
+                if (parametreActuel != null) {
+                    // Charger les valeurs depuis le tournoi par défaut
+                    nomTournoiField.setValue(parametreActuel.getNomTournoi());
+                    sportField.setValue(parametreActuel.getSport());
+                    nombreTerrainsField.setValue((double) parametreActuel.getNombreTerrains());
+                    nombreJoueursParEquipeField.setValue((double) parametreActuel.getNombreJoueursParEquipe());
+                    
+                    // Mettre à jour la session
+                    UserSession.setCurrentTournoi(parametreActuel.getId(), parametreActuel.getNomTournoi());
+                } else {
+                    // Si aucun tournoi ID=1 n'existe, le créer
+                    creerTournoiParDefautAvecId1(con);
+                }
             }
-            
-            // Charger la liste des tournois dans le sélecteur
-            chargerListeTournois();
             
         } catch (SQLException ex) {
             Notification.show("Erreur lors du chargement des paramètres: " + ex.getLocalizedMessage(),
@@ -397,21 +385,29 @@ public class VueParametres extends BaseLayout {
                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
     }
-//A imperativement changer
     private void reinitialiserTournoi() {
         try (Connection con = ConnectionPool.getConnection()) {
-            // Supprimer seulement les données des joueurs et équipes, pas la table tournoi
-            String[] tables = {"joueur_equipe", "equipe", "joueur", "utilisateur"};
+            // Obtenir l'ID du tournoi actuel
+            Integer currentTournoiId = UserSession.getCurrentTournoiId().orElse(1);
             
-            for (String table : tables) {
-                String sql = "DELETE FROM " + table;
-                try (PreparedStatement pst = con.prepareStatement(sql)) {
-                    pst.executeUpdate();
+            if (currentTournoiId == 1) {
+                // Pour le tournoi par défaut (ID=1), vider seulement les données, pas les tables
+                String[] tables = {"but", "rencontre", "joueur_equipe", "equipe", "joueur"};
+                
+                for (String table : tables) {
+                    String sql = "DELETE FROM " + table;
+                    try (PreparedStatement pst = con.prepareStatement(sql)) {
+                        pst.executeUpdate();
+                        System.out.println("Données supprimées de la table: " + table);
+                    }
                 }
+                System.out.println("Données du tournoi par défaut réinitialisées.");
+                
+            } else {
+                // Pour les tournois spécifiques (ID > 1), supprimer les tables spécifiques
+                GestionBdD.deleteTournamentTables(con, currentTournoiId);
+                System.out.println("Tables du tournoi " + currentTournoiId + " supprimées.");
             }
-            
-            // Recréer les utilisateurs et données par défaut (mais pas les paramètres du tournoi)
-            GestionBdD.creeSchema(con);
             
             Notification.show("Tournoi réinitialisé avec succès!",
                              3000, Notification.Position.MIDDLE)
@@ -454,47 +450,5 @@ public class VueParametres extends BaseLayout {
                              3000, Notification.Position.MIDDLE)
                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         }
-    }
-    
-    /**
-     * Charge la liste de tous les tournois disponibles
-     */
-    private void chargerListeTournois() {
-        try (Connection con = ConnectionPool.getConnection()) {
-            java.util.List<Parametre> tournois = Parametre.tousLesParametres(con);
-            tournoiSelector.setItems(tournois);
-            
-            // Sélectionner le tournoi actuel si il existe
-            if (parametreActuel != null) {
-                tournois.stream()
-                    .filter(p -> p.getId() == parametreActuel.getId())
-                    .findFirst()
-                    .ifPresent(tournoiSelector::setValue);
-            }
-            
-        } catch (SQLException ex) {
-            Notification.show("Erreur lors du chargement de la liste des tournois: " + ex.getLocalizedMessage(),
-                             3000, Notification.Position.MIDDLE)
-                       .addThemeVariants(NotificationVariant.LUMO_ERROR);
-        }
-    }
-    
-    /**
-     * Charge un tournoi spécifique dans l'interface
-     */
-    private void chargerTournoi(Parametre tournoi) {
-        parametreActuel = tournoi;
-        
-        // Charger les valeurs dans l'interface
-        nomTournoiField.setValue(tournoi.getNomTournoi());
-        sportField.setValue(tournoi.getSport());
-        nombreTerrainsField.setValue((double) tournoi.getNombreTerrains());
-        nombreJoueursParEquipeField.setValue((double) tournoi.getNombreJoueursParEquipe());
-        
-        // Mettre à jour la session
-        UserSession.setCurrentTournoi(tournoi.getId(), tournoi.getNomTournoi());
-        
-        // Rafraîchir la page pour mettre à jour le titre
-        getUI().ifPresent(ui -> ui.getPage().reload());
     }
 }
