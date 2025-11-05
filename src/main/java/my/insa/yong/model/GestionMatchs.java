@@ -504,9 +504,6 @@ public class GestionMatchs {
             // If not found in default table, legacy method assumes tournament ID=1
             System.err.println("Match not found in default rencontre table, using tournament ID=1: " + ex.getMessage());
         }
-                }
-            }
-        }
         
         addGoal(con, tournoiId, matchId, equipeId, joueurId, minute);
     }
@@ -574,9 +571,6 @@ public class GestionMatchs {
             // If not found in default table, legacy method assumes tournament ID=1
             System.err.println("Match not found in default rencontre table, using tournament ID=1: " + ex.getMessage());
         }
-                }
-            }
-        }
         clearGoalsForMatch(con, tournoiId, matchId);
     }
 
@@ -643,12 +637,10 @@ public class GestionMatchs {
             // If not found in default table, legacy method assumes tournament ID=1
             System.err.println("Match not found in default rencontre table, using tournament ID=1: " + ex.getMessage());
         }
-            }
-        }
         recomputeScoreFromGoals(con, tournoiId, matchId);
     }
     
-    /** Legacy implementation kept for backward compatibility */
+    /** Legacy implementation kept for backward compatibility **/
     // ======= Utilitaires exposés à l'UI =======
 
     public static int getCurrentRound(Connection con, int tournoiId) throws SQLException {
