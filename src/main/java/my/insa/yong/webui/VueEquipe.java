@@ -31,6 +31,7 @@ import my.insa.yong.model.Joueur;
 import my.insa.yong.model.UserSession;
 import my.insa.yong.utils.database.ConnectionPool;
 import my.insa.yong.webui.components.BaseLayout;
+import my.insa.yong.model.Parametre;
 
 @Route("equipe")
 @PageTitle("Équipe")
@@ -46,34 +47,44 @@ public class VueEquipe extends BaseLayout {
     private ComboBox<Equipe> equipeSelector;
     private Grid<Equipe> equipesGrid;
     private H2 titreForm;
-    
+
     private enum OperationMode {
         AJOUTER, MODIFIER, SUPPRIMER
     }
-    
+
     private OperationMode currentMode = OperationMode.AJOUTER;
 
     public VueEquipe() {
+        // Initialiser les champs pour éviter les NullPointerException
+        nomEquipeField = new TextField("Nom de l'équipe");
+        dateCreationField = new DatePicker("Date de création");
+        joueursComboBox = new MultiSelectComboBox<>();
+        equipeSelector = new ComboBox<>("Sélectionner une équipe");
+        titreForm = new H2("Ajouter une équipe");
+        
         // Wrapper avec gradient background
         VerticalLayout wrapper = new VerticalLayout();
         wrapper.setSizeFull();
         wrapper.addClassName("app-container");
         wrapper.setPadding(true);
-        
+
         // Layout principal avec deux colonnes
         HorizontalLayout mainLayout = new HorizontalLayout();
         mainLayout.setSizeFull();
         mainLayout.setSpacing(true);
 
-        // Partie gauche - Formulaire
-        VerticalLayout leftPanel = new VerticalLayout();
-        leftPanel.setWidth("40%");
-        leftPanel.setSpacing(true);
-        leftPanel.setPadding(true);
-        leftPanel.addClassName("form-container");
-        leftPanel.addClassName("fade-in");
+        // Partie gauche - Formulaire (seulement si admin)
+        if (UserSession.adminConnected()) {
+            VerticalLayout leftPanel = new VerticalLayout();
+            leftPanel.setWidth("40%");
+            leftPanel.setSpacing(true);
+            leftPanel.setPadding(true);
+            leftPanel.addClassName("form-container");
+            leftPanel.addClassName("fade-in");
 
-        construireFormulaire(leftPanel);
+            construireFormulaire(leftPanel);
+            mainLayout.add(leftPanel);
+        }
 
         // Partie droite - Tableau des équipes
         VerticalLayout rightPanel = new VerticalLayout();
@@ -83,7 +94,12 @@ public class VueEquipe extends BaseLayout {
 
         construireTableau(rightPanel);
 
-        mainLayout.add(leftPanel, rightPanel);
+        // Si utilisateur normal, le tableau prend toute la largeur
+        if (!UserSession.adminConnected()) {
+            rightPanel.setWidth("100%");
+        }
+
+        mainLayout.add(rightPanel);
         wrapper.add(mainLayout);
         this.setContent(wrapper);
 
@@ -117,8 +133,8 @@ public class VueEquipe extends BaseLayout {
 
         // Sélecteur d'équipe (visible seulement pour Modifier/Supprimer)
         equipeSelector = new ComboBox<>("Sélectionner une équipe");
-        equipeSelector.setItemLabelGenerator(equipe -> 
-            String.format("%d - %s (%s)", equipe.getId(), equipe.getNomEquipe(), equipe.getDateCreation()));
+        equipeSelector.setItemLabelGenerator(equipe
+                -> String.format("%d - %s (%s)", equipe.getId(), equipe.getNomEquipe(), equipe.getDateCreation()));
         equipeSelector.setPlaceholder("Choisissez une équipe...");
         equipeSelector.setWidthFull();
         equipeSelector.addValueChangeListener(e -> {
@@ -145,8 +161,8 @@ public class VueEquipe extends BaseLayout {
         // Sélection des joueurs
         joueursComboBox = new MultiSelectComboBox<>();
         joueursComboBox.setLabel("Sélectionner les joueurs");
-        joueursComboBox.setItemLabelGenerator(joueur -> 
-            String.format("%s %s (%d ans)", joueur.getPrenom(), joueur.getNom(), joueur.getAge()));
+        joueursComboBox.setItemLabelGenerator(joueur
+                -> String.format("%s %s (%d ans)", joueur.getPrenom(), joueur.getNom(), joueur.getAge()));
         joueursComboBox.addClassName("form-field");
         joueursComboBox.setWidthFull();
 
@@ -157,8 +173,8 @@ public class VueEquipe extends BaseLayout {
         submitButton.addClickListener(e -> executerOperation());
         submitButton.setWidthFull();
 
-        leftPanel.add(titreForm, operationButtons, equipeSelector, nomEquipeField, 
-                     dateCreationField, joueursComboBox, submitButton);
+        leftPanel.add(titreForm, operationButtons, equipeSelector, nomEquipeField,
+                dateCreationField, joueursComboBox, submitButton);
     }
 
     private void construireTableau(VerticalLayout rightPanel) {
@@ -177,7 +193,7 @@ public class VueEquipe extends BaseLayout {
                     .reduce((a, b) -> a + ", " + b)
                     .orElse("Aucun joueur");
         }).setHeader("Joueurs").setAutoWidth(true);
-        
+
         equipesGrid.setSizeFull();
         equipesGrid.addClassName("players-grid");
 
@@ -186,7 +202,7 @@ public class VueEquipe extends BaseLayout {
 
     private void setMode(OperationMode mode) {
         currentMode = mode;
-        
+
         switch (mode) {
             case AJOUTER:
                 titreForm.setText("Ajouter une équipe");
@@ -212,7 +228,7 @@ public class VueEquipe extends BaseLayout {
     private void remplirFormulaire(Equipe equipe) {
         nomEquipeField.setValue(equipe.getNomEquipe());
         dateCreationField.setValue(equipe.getDateCreation());
-        
+
         // Charger les joueurs de l'équipe
         List<Joueur> joueursEquipe = chargerJoueursEquipe(equipe.getId());
         Set<Joueur> joueursSelectionnes = new HashSet<>(joueursEquipe);
@@ -231,14 +247,13 @@ public class VueEquipe extends BaseLayout {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
             String equipeTable = tournoiId == 1 ? "equipe" : "equipe_" + tournoiId;
             String sql = "SELECT id, nom_equipe, date_creation FROM " + equipeTable + " ORDER BY nom_equipe";
-            try (PreparedStatement pst = con.prepareStatement(sql);
-                 ResultSet rs = pst.executeQuery()) {
-                
+            try (PreparedStatement pst = con.prepareStatement(sql); ResultSet rs = pst.executeQuery()) {
+
                 while (rs.next()) {
                     Equipe equipe = new Equipe(
-                        rs.getInt("id"),
-                        rs.getString("nom_equipe"),
-                        rs.getDate("date_creation").toLocalDate()
+                            rs.getInt("id"),
+                            rs.getString("nom_equipe"),
+                            rs.getDate("date_creation").toLocalDate()
                     );
                     equipes.add(equipe);
                 }
@@ -246,7 +261,7 @@ public class VueEquipe extends BaseLayout {
             equipeSelector.setItems(equipes);
         } catch (SQLException ex) {
             Notification.show("Erreur lors du chargement des équipes : " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER)
-                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
     }
 
@@ -271,33 +286,82 @@ public class VueEquipe extends BaseLayout {
 
         if (nomEquipe.isEmpty() || dateCreation == null) {
             Notification.show("Veuillez remplir tous les champs correctement.", 3000, Notification.Position.TOP_CENTER)
-                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
             return;
         }
-        
-        // Validation du nombre de joueurs selon le tournoi actuel
-        int maxJoueurs = UserSession.getCurrentTournoiNombreJoueursParEquipe();
-        if (joueursSelectionnes.size() > maxJoueurs) {
-            Notification.show("Trop de joueurs sélectionnés. Maximum autorisé : " + maxJoueurs + " joueurs pour ce tournoi.", 
-                             3000, Notification.Position.TOP_CENTER)
-                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+
+        // Validation du nombre minimum de joueurs (11 pour une équipe de football)
+        if (joueursSelectionnes.size() < 11) {
+            Notification.show("⚠️ ERREUR : Une équipe doit contenir au minimum 11 joueurs. Vous en avez sélectionné " + joueursSelectionnes.size() + ".",
+                    4000, Notification.Position.TOP_CENTER)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
             return;
         }
 
         try (Connection con = ConnectionPool.getConnection()) {
-            con.setAutoCommit(false);
+
+            // --- 1. VÉRIFICATION DU QUOTA D'ÉQUIPES (Blocage à l'inscription) ---
+            int maxEquipes = getMaxEquipesAutorisees(con); // Ex: 6 équipes
             
-            // Créer une nouvelle équipe (id = -1)
-            Equipe nouvelleEquipe = new Equipe(nomEquipe, dateCreation);
+            // Récupère l'ID du tournoi actuel pour utiliser la bonne table d'équipes
+            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            String equipeTable = tournoiId == 1 ? "equipe" : "equipe_" + tournoiId;
+
+            String sqlCount = "SELECT COUNT(*) FROM " + equipeTable;
+            int equipesActuelles;
+            try (PreparedStatement pstCount = con.prepareStatement(sqlCount); ResultSet rs = pstCount.executeQuery()) {
+                rs.next();
+                equipesActuelles = rs.getInt(1);
+            }
+
+            // BLOCAGE si le quota est atteint ou dépassé (Ex: 6 >= 6)
+            if (equipesActuelles >= maxEquipes) {
+                Notification.show("IMPOSSIBLE D'AJOUTER : La limite de " + maxEquipes + " équipes pour ce tournoi (" + (maxEquipes / 2) + " terrains) est atteinte.",
+                        5000, Notification.Position.TOP_CENTER)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
+            // --- FIN VÉRIFICATION DU QUOTA ---
+
+            // Validation du nombre de joueurs par équipe (contrainte séparée)
+            int maxJoueurs = UserSession.getCurrentTournoiNombreJoueursParEquipe();
+            if (joueursSelectionnes.size() > maxJoueurs) {
+                Notification.show("Trop de joueurs sélectionnés. Maximum autorisé : " + maxJoueurs + " joueurs pour ce tournoi.",
+                        3000, Notification.Position.TOP_CENTER)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
+
+            // --- 2. VÉRIFICATION : Aucun joueur ne doit être dans une autre équipe ---
+            String joueurEquipeTable = tournoiId == 1 ? "joueur_equipe" : "joueur_equipe_" + tournoiId;
+            String sqlCheckJoueurs = "SELECT joueur_id FROM " + joueurEquipeTable + " WHERE joueur_id IN (" +
+                    String.join(",", joueursSelectionnes.stream().map(j -> String.valueOf(j.getId())).toList()) +
+                    ")";
             
-            // Sauvegarder en utilisant ClasseMiroir
-            int equipeId = nouvelleEquipe.saveInDB(con);
-            
-            // Ajouter les joueurs à l'équipe
             if (!joueursSelectionnes.isEmpty()) {
-                int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-                String joueurEquipeTable = tournoiId == 1 ? "joueur_equipe" : "joueur_equipe_" + tournoiId;
+                try (PreparedStatement pstCheck = con.prepareStatement(sqlCheckJoueurs);
+                     ResultSet rsCheck = pstCheck.executeQuery()) {
+                    if (rsCheck.next()) {
+                        Notification.show("❌ ERREUR : Un ou plusieurs joueurs sélectionnés sont déjà inscrits dans une autre équipe. " +
+                                "Un joueur ne peut être dans qu'une seule équipe à la fois.",
+                                5000, Notification.Position.TOP_CENTER)
+                                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                        return;
+                    }
+                }
+            }
+            // --- FIN VÉRIFICATION JOUEURS ---
+
+            con.setAutoCommit(false); // Début de la transaction
+
+            // Créer et sauvegarder l'équipe (Utilise la logique Multi-Tournoi pour déterminer la table)
+            Equipe nouvelleEquipe = new Equipe(nomEquipe, dateCreation);
+            int equipeId = nouvelleEquipe.saveInDB(con);
+
+            // Ajouter les joueurs à l'équipe (Utilise la logique Multi-Tournoi pour déterminer la table)
+            if (!joueursSelectionnes.isEmpty()) {
                 String sqlJoueur = "INSERT INTO " + joueurEquipeTable + " (joueur_id, equipe_id) VALUES (?, ?)";
+
                 try (PreparedStatement pstJoueur = con.prepareStatement(sqlJoueur)) {
                     for (Joueur joueur : joueursSelectionnes) {
                         pstJoueur.setInt(1, joueur.getId());
@@ -307,17 +371,23 @@ public class VueEquipe extends BaseLayout {
                     pstJoueur.executeBatch();
                 }
             }
-            
-            con.commit();
-            
+
+            con.commit(); // Validation de la transaction
+
             Notification.show("Équipe ajoutée avec succès ! (ID: " + equipeId + ")", 3000, Notification.Position.TOP_CENTER)
-                .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             viderFormulaire();
             chargerEquipes();
-            
+
         } catch (SQLException ex) {
+            // Gestion du rollback
+            try {
+                ConnectionPool.getConnection().rollback();
+            } catch (SQLException ignore) {
+            }
+
             Notification.show("Erreur lors de l'ajout : " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER)
-                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
     }
 
@@ -325,7 +395,7 @@ public class VueEquipe extends BaseLayout {
         Equipe equipeSelectionnee = equipeSelector.getValue();
         if (equipeSelectionnee == null) {
             Notification.show("Veuillez sélectionner une équipe à modifier.", 3000, Notification.Position.TOP_CENTER)
-                .addThemeVariants(NotificationVariant.LUMO_WARNING);
+                    .addThemeVariants(NotificationVariant.LUMO_WARNING);
             return;
         }
 
@@ -335,42 +405,72 @@ public class VueEquipe extends BaseLayout {
 
         if (nomEquipe.isEmpty() || dateCreation == null) {
             Notification.show("Veuillez remplir tous les champs correctement.", 3000, Notification.Position.TOP_CENTER)
-                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
             return;
         }
-        
+
+        // Validation du nombre minimum de joueurs (11 pour une équipe de football)
+        if (joueursSelectionnes.size() < 11) {
+            Notification.show("⚠️ ERREUR : Une équipe doit contenir au minimum 11 joueurs. Vous en avez sélectionné " + joueursSelectionnes.size() + ".",
+                    4000, Notification.Position.TOP_CENTER)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            return;
+        }
+
         // Validation du nombre de joueurs selon le tournoi actuel
         int maxJoueurs = UserSession.getCurrentTournoiNombreJoueursParEquipe();
         if (joueursSelectionnes.size() > maxJoueurs) {
-            Notification.show("Trop de joueurs sélectionnés. Maximum autorisé : " + maxJoueurs + " joueurs pour ce tournoi.", 
-                             3000, Notification.Position.TOP_CENTER)
-                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            Notification.show("Trop de joueurs sélectionnés. Maximum autorisé : " + maxJoueurs + " joueurs pour ce tournoi.",
+                    3000, Notification.Position.TOP_CENTER)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
             return;
         }
 
         try (Connection con = ConnectionPool.getConnection()) {
-            con.setAutoCommit(false);
-            
-            // Modifier l'équipe
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            
+            // --- VÉRIFICATION : Aucun joueur ne doit être dans une autre équipe (sauf celle-ci) ---
+            String joueurEquipeTable = tournoiId == 1 ? "joueur_equipe" : "joueur_equipe_" + tournoiId;
+            String sqlCheckJoueurs = "SELECT joueur_id FROM " + joueurEquipeTable + " WHERE joueur_id IN (" +
+                    String.join(",", joueursSelectionnes.stream().map(j -> String.valueOf(j.getId())).toList()) +
+                    ") AND equipe_id != ?";
+            
+            if (!joueursSelectionnes.isEmpty()) {
+                try (PreparedStatement pstCheck = con.prepareStatement(sqlCheckJoueurs)) {
+                    pstCheck.setInt(1, equipeSelectionnee.getId());
+                    try (ResultSet rsCheck = pstCheck.executeQuery()) {
+                        if (rsCheck.next()) {
+                            Notification.show("❌ ERREUR : Un ou plusieurs joueurs sélectionnés sont déjà inscrits dans une autre équipe. " +
+                                    "Un joueur ne peut être dans qu'une seule équipe à la fois.",
+                                    5000, Notification.Position.TOP_CENTER)
+                                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                            return;
+                        }
+                    }
+                }
+            }
+            // --- FIN VÉRIFICATION JOUEURS ---
+            
+            con.setAutoCommit(false);
+
+            // Modifier l'équipe
             String equipeTable = tournoiId == 1 ? "equipe" : "equipe_" + tournoiId;
             String sql = "UPDATE " + equipeTable + " SET nom_equipe = ?, date_creation = ? WHERE id = ?";
             try (PreparedStatement pst = con.prepareStatement(sql)) {
                 pst.setString(1, nomEquipe);
                 pst.setDate(2, Date.valueOf(dateCreation));
                 pst.setInt(3, equipeSelectionnee.getId());
-                
+
                 int rows = pst.executeUpdate();
-                
+
                 if (rows > 0) {
                     // Supprimer les anciens joueurs de l'équipe
-                    String joueurEquipeTable = tournoiId == 1 ? "joueur_equipe" : "joueur_equipe_" + tournoiId;
                     String sqlDelete = "DELETE FROM " + joueurEquipeTable + " WHERE equipe_id = ?";
                     try (PreparedStatement pstDelete = con.prepareStatement(sqlDelete)) {
                         pstDelete.setInt(1, equipeSelectionnee.getId());
                         pstDelete.executeUpdate();
                     }
-                    
+
                     // Ajouter les nouveaux joueurs
                     if (!joueursSelectionnes.isEmpty()) {
                         String sqlJoueur = "INSERT INTO " + joueurEquipeTable + " (joueur_id, equipe_id) VALUES (?, ?)";
@@ -383,23 +483,23 @@ public class VueEquipe extends BaseLayout {
                             pstJoueur.executeBatch();
                         }
                     }
-                    
+
                     con.commit();
-                    
+
                     Notification.show("Équipe modifiée avec succès !", 3000, Notification.Position.TOP_CENTER)
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                     chargerEquipes();
                     chargerEquipesPourSelection();
                 } else {
                     con.rollback();
                     Notification.show("Échec de la modification de l'équipe.", 3000, Notification.Position.TOP_CENTER)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
                 }
             }
-            
+
         } catch (SQLException ex) {
             Notification.show("Erreur lors de la modification : " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER)
-                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
     }
 
@@ -407,47 +507,47 @@ public class VueEquipe extends BaseLayout {
         Equipe equipeSelectionnee = equipeSelector.getValue();
         if (equipeSelectionnee == null) {
             Notification.show("Veuillez sélectionner une équipe à supprimer.", 3000, Notification.Position.TOP_CENTER)
-                .addThemeVariants(NotificationVariant.LUMO_WARNING);
+                    .addThemeVariants(NotificationVariant.LUMO_WARNING);
             return;
         }
 
         try (Connection con = ConnectionPool.getConnection()) {
             con.setAutoCommit(false);
-            
+
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
             String joueurEquipeTable = tournoiId == 1 ? "joueur_equipe" : "joueur_equipe_" + tournoiId;
             String equipeTable = tournoiId == 1 ? "equipe" : "equipe_" + tournoiId;
-            
+
             // Supprimer d'abord les joueurs de l'équipe
             String sqlJoueurs = "DELETE FROM " + joueurEquipeTable + " WHERE equipe_id = ?";
             try (PreparedStatement pstJoueurs = con.prepareStatement(sqlJoueurs)) {
                 pstJoueurs.setInt(1, equipeSelectionnee.getId());
                 pstJoueurs.executeUpdate();
             }
-            
+
             // Puis supprimer l'équipe
             String sql = "DELETE FROM " + equipeTable + " WHERE id = ?";
             try (PreparedStatement pst = con.prepareStatement(sql)) {
                 pst.setInt(1, equipeSelectionnee.getId());
-                
+
                 int rows = pst.executeUpdate();
                 if (rows > 0) {
                     con.commit();
                     Notification.show("Équipe supprimée avec succès !", 3000, Notification.Position.TOP_CENTER)
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                     viderFormulaire();
                     chargerEquipes();
                     chargerEquipesPourSelection();
                 } else {
                     con.rollback();
                     Notification.show("Échec de la suppression de l'équipe.", 3000, Notification.Position.TOP_CENTER)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
                 }
             }
-            
+
         } catch (SQLException ex) {
             Notification.show("Erreur lors de la suppression : " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER)
-                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
     }
 
@@ -457,14 +557,13 @@ public class VueEquipe extends BaseLayout {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
             String equipeTable = tournoiId == 1 ? "equipe" : "equipe_" + tournoiId;
             String sql = "SELECT * FROM " + equipeTable + " ORDER BY nom_equipe, date_creation";
-            try (PreparedStatement pst = con.prepareStatement(sql);
-                 ResultSet rs = pst.executeQuery()) {
-                
+            try (PreparedStatement pst = con.prepareStatement(sql); ResultSet rs = pst.executeQuery()) {
+
                 while (rs.next()) {
                     Equipe equipe = new Equipe(
-                        rs.getInt("id"),
-                        rs.getString("nom_equipe"),
-                        rs.getDate("date_creation").toLocalDate()
+                            rs.getInt("id"),
+                            rs.getString("nom_equipe"),
+                            rs.getDate("date_creation").toLocalDate()
                     );
                     equipes.add(equipe);
                 }
@@ -472,7 +571,7 @@ public class VueEquipe extends BaseLayout {
             equipesGrid.setItems(equipes);
         } catch (SQLException ex) {
             Notification.show("Erreur lors du chargement des équipes : " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER)
-                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
     }
 
@@ -482,17 +581,16 @@ public class VueEquipe extends BaseLayout {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
             String joueurTable = tournoiId == 1 ? "joueur" : "joueur_" + tournoiId;
             String sql = "SELECT id, prenom, nom, age, sexe, taille FROM " + joueurTable + " ORDER BY nom, prenom";
-            try (PreparedStatement pst = con.prepareStatement(sql);
-                 ResultSet rs = pst.executeQuery()) {
-                
+            try (PreparedStatement pst = con.prepareStatement(sql); ResultSet rs = pst.executeQuery()) {
+
                 while (rs.next()) {
                     Joueur joueur = new Joueur(
-                        rs.getInt("id"),
-                        rs.getString("prenom"),
-                        rs.getString("nom"),
-                        rs.getInt("age"),
-                        rs.getString("sexe"),
-                        rs.getDouble("taille")
+                            rs.getInt("id"),
+                            rs.getString("prenom"),
+                            rs.getString("nom"),
+                            rs.getInt("age"),
+                            rs.getString("sexe"),
+                            rs.getDouble("taille")
                     );
                     joueurs.add(joueur);
                 }
@@ -500,7 +598,7 @@ public class VueEquipe extends BaseLayout {
             joueursComboBox.setItems(joueurs);
         } catch (SQLException ex) {
             Notification.show("Erreur lors du chargement des joueurs : " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER)
-                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
     }
 
@@ -510,22 +608,22 @@ public class VueEquipe extends BaseLayout {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
             String joueurTable = tournoiId == 1 ? "joueur" : "joueur_" + tournoiId;
             String joueurEquipeTable = tournoiId == 1 ? "joueur_equipe" : "joueur_equipe_" + tournoiId;
-            String sql = "SELECT j.id, j.prenom, j.nom, j.age, j.sexe, j.taille " +
-                        "FROM " + joueurTable + " j " +
-                        "INNER JOIN " + joueurEquipeTable + " je ON j.id = je.joueur_id " +
-                        "WHERE je.equipe_id = ? " +
-                        "ORDER BY j.nom, j.prenom";
+            String sql = "SELECT j.id, j.prenom, j.nom, j.age, j.sexe, j.taille "
+                    + "FROM " + joueurTable + " j "
+                    + "INNER JOIN " + joueurEquipeTable + " je ON j.id = je.joueur_id "
+                    + "WHERE je.equipe_id = ? "
+                    + "ORDER BY j.nom, j.prenom";
             try (PreparedStatement pst = con.prepareStatement(sql)) {
                 pst.setInt(1, equipeId);
                 try (ResultSet rs = pst.executeQuery()) {
                     while (rs.next()) {
                         Joueur joueur = new Joueur(
-                            rs.getInt("id"),
-                            rs.getString("prenom"),
-                            rs.getString("nom"),
-                            rs.getInt("age"),
-                            rs.getString("sexe"),
-                            rs.getDouble("taille")
+                                rs.getInt("id"),
+                                rs.getString("prenom"),
+                                rs.getString("nom"),
+                                rs.getInt("age"),
+                                rs.getString("sexe"),
+                                rs.getDouble("taille")
                         );
                         joueurs.add(joueur);
                     }
@@ -535,5 +633,21 @@ public class VueEquipe extends BaseLayout {
             // Log error but don't show notification for this helper method
         }
         return joueurs;
+
+    }
+
+    private int getMaxEquipesAutorisees(Connection con) throws SQLException {
+        // Récupère l'ID du tournoi actuel (par défaut 1 si non défini)
+        int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+
+        // Assurez-vous que l'import my.insa.yong.model.Parametre; est au début du fichier
+        Parametre params = Parametre.getParametreParId(con, tournoiId);
+
+        if (params != null) {
+            // La règle est : Nombre max d'équipes = Nombre de Terrains * 2 
+            return params.getNombreTerrains() * 2;
+        }
+        // S'il y a un problème de lecture des paramètres (très rare si tout compile), pas de blocage.
+        return Integer.MAX_VALUE;
     }
 }

@@ -50,6 +50,15 @@ public class VueJoueur extends BaseLayout {
     private OperationMode currentMode = OperationMode.AJOUTER;
 
     public VueJoueur() {
+        // Initialiser les champs pour éviter les NullPointerException
+        prenomField = new TextField("Prénom");
+        nomField = new TextField("Nom");
+        ageField = new NumberField("Âge");
+        sexeField = new ComboBox<>("Sexe");
+        tailleField = new NumberField("Taille (cm)");
+        playerSelector = new ComboBox<>("Sélectionner un joueur");
+        titreForm = new H2("Détails du joueur");
+        
         // Wrapper avec gradient background
         VerticalLayout wrapper = new VerticalLayout();
         wrapper.setSizeFull();
@@ -61,94 +70,93 @@ public class VueJoueur extends BaseLayout {
         mainLayout.setSizeFull();
         mainLayout.setSpacing(true);
 
-        // Partie gauche - Formulaire avec opérations
-        VerticalLayout leftPanel = new VerticalLayout();
-        leftPanel.addClassName("form-container");
-        leftPanel.addClassName("fade-in");
-        leftPanel.setWidth("400px");
-        leftPanel.setSpacing(true);
-        leftPanel.setPadding(true);
+        // Partie gauche - Formulaire avec opérations (seulement si admin)
+        if (UserSession.adminConnected()) {
+            VerticalLayout leftPanel = new VerticalLayout();
+            leftPanel.addClassName("form-container");
+            leftPanel.addClassName("fade-in");
+            leftPanel.setWidth("400px");
+            leftPanel.setSpacing(true);
+            leftPanel.setPadding(true);
 
-        // Titre du formulaire (changera selon l'opération)
-        titreForm = new H2("Détails du joueur");
-        titreForm.addClassName("page-title");
+            // Titre du formulaire (changera selon l'opération)
+            titreForm.addClassName("page-title");
 
-        // Boutons d'opération en haut
-        HorizontalLayout operationButtons = new HorizontalLayout();
-        operationButtons.setWidthFull();
-        operationButtons.setSpacing(true);
+            // Boutons d'opération en haut
+            HorizontalLayout operationButtons = new HorizontalLayout();
+            operationButtons.setWidthFull();
+            operationButtons.setSpacing(true);
 
-        ajouterButton = new Button("Ajouter");
-        ajouterButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        ajouterButton.addClickListener(e -> setMode(OperationMode.AJOUTER));
+            ajouterButton = new Button("Ajouter");
+            ajouterButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+            ajouterButton.addClickListener(e -> setMode(OperationMode.AJOUTER));
 
-        modifierButton = new Button("Modifier");
-        modifierButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        modifierButton.addClickListener(e -> setMode(OperationMode.MODIFIER));
+            modifierButton = new Button("Modifier");
+            modifierButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+            modifierButton.addClickListener(e -> setMode(OperationMode.MODIFIER));
 
-        supprimerButton = new Button("Supprimer");
-        supprimerButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
-        supprimerButton.addClickListener(e -> setMode(OperationMode.SUPPRIMER));
+            supprimerButton = new Button("Supprimer");
+            supprimerButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
+            supprimerButton.addClickListener(e -> setMode(OperationMode.SUPPRIMER));
 
-        operationButtons.add(ajouterButton, modifierButton, supprimerButton);
+            operationButtons.add(ajouterButton, modifierButton, supprimerButton);
 
-        // Sélecteur de joueur (visible seulement pour Modifier/Supprimer)
-        playerSelector = new ComboBox<>("Sélectionner un joueur");
-        playerSelector.setItemLabelGenerator(joueur -> 
-            String.format("%d - %s %s", joueur.getId(), joueur.getPrenom(), joueur.getNom()));
-        playerSelector.setPlaceholder("Choisissez un joueur...");
-        playerSelector.setWidthFull();
-        playerSelector.addValueChangeListener(e -> {
-            if (e.getValue() != null) {
-                remplirFormulaire(e.getValue());
-            }
-        });
-        playerSelector.setVisible(false);
+            // Sélecteur de joueur (visible seulement pour Modifier/Supprimer)
+            playerSelector.setItemLabelGenerator(joueur -> 
+                String.format("%d - %s %s", joueur.getId(), joueur.getPrenom(), joueur.getNom()));
+            playerSelector.setPlaceholder("Choisissez un joueur...");
+            playerSelector.setWidthFull();
+            playerSelector.addValueChangeListener(e -> {
+                if (e.getValue() != null) {
+                    remplirFormulaire(e.getValue());
+                }
+            });
+            playerSelector.setVisible(false);
 
-        // Champs du formulaire
-        prenomField = new TextField("Prénom");
-        prenomField.setPlaceholder("Entrez le prénom du joueur");
-        prenomField.setRequired(true);
-        prenomField.addClassName("form-field");
-        prenomField.setWidthFull();
+            // Champs du formulaire
+            prenomField.setPlaceholder("Entrez le prénom du joueur");
+            prenomField.setRequired(true);
+            prenomField.addClassName("form-field");
+            prenomField.setWidthFull();
 
-        nomField = new TextField("Nom");
-        nomField.setPlaceholder("Entrez le nom du joueur");
-        nomField.setRequired(true);
-        nomField.addClassName("form-field");
-        nomField.setWidthFull();
+            nomField.setPlaceholder("Entrez le nom du joueur");
+            nomField.setRequired(true);
+            nomField.addClassName("form-field");
+            nomField.setWidthFull();
 
-        ageField = new NumberField("Âge");
-        ageField.setPlaceholder("Entrez l'âge du joueur");
-        ageField.setRequired(true);
-        ageField.setMin(1);
-        ageField.setMax(150);
-        ageField.addClassName("form-field");
-        ageField.setWidthFull();
+            ageField.setPlaceholder("Entrez l'âge du joueur");
+            ageField.setRequired(true);
+            ageField.setMin(1);
+            ageField.setMax(150);
+            ageField.addClassName("form-field");
+            ageField.setWidthFull();
 
-        sexeField = new ComboBox<>("Sexe");
-        sexeField.setItems("H", "F");
-        sexeField.setPlaceholder("Sélectionnez le sexe");
-        sexeField.setRequired(true);
-        sexeField.addClassName("form-field");
-        sexeField.setWidthFull();
+            sexeField.setItems("H", "F");
+            sexeField.setPlaceholder("Sélectionnez le sexe");
+            sexeField.setRequired(true);
+            sexeField.addClassName("form-field");
+            sexeField.setWidthFull();
 
-        tailleField = new NumberField("Taille (cm)");
-        tailleField.setPlaceholder("Entrez la taille du joueur en cm");
-        tailleField.setRequired(true);
-        tailleField.setMin(50);
-        tailleField.setMax(250);
-        tailleField.addClassName("form-field");
-        tailleField.setWidthFull();
+            tailleField.setPlaceholder("Entrez la taille du joueur en cm");
+            tailleField.setRequired(true);
+            tailleField.setMin(50);
+            tailleField.setMax(250);
+            tailleField.addClassName("form-field");
+            tailleField.setWidthFull();
 
-        // Bouton de soumission (texte changera selon l'opération)
-        submitButton = new Button("Valider");
-        submitButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        submitButton.addClassName("btn-primary");
-        submitButton.addClickListener(e -> executerOperation());
-        submitButton.setWidthFull();
+            // Bouton de soumission (texte changera selon l'opération)
+            submitButton = new Button("Valider");
+            submitButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+            submitButton.addClassName("btn-primary");
+            submitButton.addClickListener(e -> executerOperation());
+            submitButton.setWidthFull();
 
-        leftPanel.add(titreForm, operationButtons, playerSelector, prenomField, nomField, ageField, sexeField, tailleField, submitButton);
+            leftPanel.add(titreForm, operationButtons, playerSelector, prenomField, nomField, ageField, sexeField, tailleField, submitButton);
+            mainLayout.add(leftPanel);
+        } else {
+            // Mode utilisateur normal : initialiser juste le titre
+            titreForm.addClassName("page-title");
+        }
 
         // Partie droite - Tableau des joueurs
         VerticalLayout rightPanel = new VerticalLayout();
@@ -175,9 +183,14 @@ public class VueJoueur extends BaseLayout {
         rightPanel.add(titreTable, joueursGrid);
 
         // Ajouter les panels au layout principal
-        mainLayout.add(leftPanel, rightPanel);
-        mainLayout.setFlexGrow(0, leftPanel);  // Panel gauche taille fixe
-        mainLayout.setFlexGrow(1, rightPanel); // Panel droit prend l'espace restant
+        // Si utilisateur normal, le tableau prend toute la largeur
+        if (UserSession.adminConnected()) {
+            mainLayout.add(rightPanel);
+            mainLayout.setFlexGrow(1, rightPanel); // Panel droit prend l'espace restant
+        } else {
+            rightPanel.setWidth("100%");
+            mainLayout.add(rightPanel);
+        }
 
         wrapper.add(mainLayout);
         this.setContent(wrapper);
@@ -185,8 +198,10 @@ public class VueJoueur extends BaseLayout {
         // Charger les joueurs au démarrage
         chargerJoueurs();
         
-        // Initialiser en mode Ajouter
-        setMode(OperationMode.AJOUTER);
+        // Initialiser en mode Ajouter seulement si admin
+        if (UserSession.adminConnected()) {
+            setMode(OperationMode.AJOUTER);
+        }
     }
 
     /**

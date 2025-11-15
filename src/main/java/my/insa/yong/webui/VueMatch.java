@@ -71,6 +71,13 @@ public class VueMatch extends BaseLayout {
         addGoalBtn.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
         clearGoalsBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
 
+        // Masquer les boutons d'administration pour les utilisateurs normaux
+        boolean isAdmin = UserSession.adminConnected();
+        drawRoundBtn.setVisible(isAdmin);
+        resetBtn.setVisible(isAdmin);
+        addGoalBtn.setVisible(isAdmin);
+        clearGoalsBtn.setVisible(isAdmin);
+
         drawRoundBtn.addClickListener(e -> onNextRound());
         resetBtn.addClickListener(e -> onReset());
         addGoalBtn.addClickListener(e -> onAddGoal());
@@ -108,16 +115,19 @@ public class VueMatch extends BaseLayout {
         topGrid.setHeight("320px");
         grid.setSizeFull();
 
-        // --- Panneau « Saisie des buteurs » ---
+        // --- Panneau « Saisie des buteurs » --- (seulement pour admin)
         H3 scoringTitle = new H3("Saisie des buteurs (mode semi-auto)");
+        scoringTitle.setVisible(isAdmin);
 
         buteurSelect.setItemLabelGenerator(j -> j.nom() + " — " + j.equipeNom());
         buteurSelect.setWidth("320px");
+        buteurSelect.setVisible(isAdmin);
 
         minuteField.setMin(0);
         minuteField.setMax(130);
         minuteField.setPlaceholder("ex. 42");
         minuteField.setWidth("120px");
+        minuteField.setVisible(isAdmin);
 
         scoreAField.setReadOnly(true);
         scoreBField.setReadOnly(true);
@@ -127,16 +137,19 @@ public class VueMatch extends BaseLayout {
         HorizontalLayout addLine = new HorizontalLayout(buteurSelect, minuteField, addGoalBtn, clearGoalsBtn, scoreAField, scoreBField);
         addLine.setSpacing(true);
         addLine.setAlignItems(Alignment.END);
+        addLine.setVisible(isAdmin);
 
         // Grid des buts
         goalsGrid.addColumn(GoalRow::minute).setHeader("Minute(s)").setAutoWidth(true);
         goalsGrid.addColumn(GoalRow::equipeNom).setHeader("Équipe").setAutoWidth(true);
         goalsGrid.addColumn(GoalRow::joueurNom).setHeader("Buteur").setAutoWidth(true).setFlexGrow(1);
-        goalsGrid.addComponentColumn(row -> {
-            Button b = new Button("Supprimer", e -> onDeleteGoal(row.id()));
-            b.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY_INLINE);
-            return b;
-        }).setHeader("Action").setAutoWidth(true);
+        if (isAdmin) {
+            goalsGrid.addComponentColumn(row -> {
+                Button b = new Button("Supprimer", e -> onDeleteGoal(row.id()));
+                b.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY_INLINE);
+                return b;
+            }).setHeader("Action").setAutoWidth(true);
+        }
         goalsGrid.setHeight("200px");
 
         // Empêche le "min-height:auto"

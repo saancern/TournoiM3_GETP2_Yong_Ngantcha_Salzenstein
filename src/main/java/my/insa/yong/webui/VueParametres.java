@@ -41,6 +41,33 @@ public class VueParametres extends BaseLayout {
     private Parametre parametreActuel;
 
     public VueParametres() {
+        // Vérifier si l'utilisateur est connecté et admin
+        if (!UserSession.adminConnected()) {
+            // Afficher un message d'accès refusé
+            VerticalLayout wrapper = new VerticalLayout();
+            wrapper.setSizeFull();
+            wrapper.addClassName("app-container");
+            wrapper.setJustifyContentMode(VerticalLayout.JustifyContentMode.CENTER);
+            wrapper.setDefaultHorizontalComponentAlignment(Alignment.CENTER);
+            
+            VerticalLayout container = new VerticalLayout();
+            container.addClassName("form-container");
+            container.addClassName("fade-in");
+            container.setAlignItems(Alignment.CENTER);
+            container.setSpacing(true);
+            
+            H1 title = new H1("Accès Refusé");
+            title.addClassName("page-title");
+            
+            H3 message = new H3("Vous devez être administrateur pour accéder aux paramètres.");
+            message.addClassName("section-title");
+            
+            container.add(title, message);
+            wrapper.add(container);
+            setContent(wrapper);
+            return;
+        }
+        
         // Wrapper avec gradient background pour centrer le contenu
         VerticalLayout wrapper = new VerticalLayout();
         wrapper.setSizeFull();
@@ -56,13 +83,7 @@ public class VueParametres extends BaseLayout {
         container.setAlignItems(Alignment.CENTER);
         container.setSpacing(true);
         
-        if (UserSession.userConnected()) {
-            // Contenu pour utilisateur connecté
-            construireInterfaceUtilisateurConnecte(container);
-        } else {
-            // Contenu pour utilisateur non connecté
-            construireInterfaceUtilisateurNonConnecte(container);
-        }
+        construireInterfaceUtilisateurConnecte(container);
         
         wrapper.add(container);
         setContent(wrapper);
@@ -159,16 +180,6 @@ public class VueParametres extends BaseLayout {
         
         // Charger les paramètres existants
         chargerParametresExistants();
-    }
-
-    private void construireInterfaceUtilisateurNonConnecte(VerticalLayout container) {
-        H1 title = new H1("Accès Restreint");
-        title.addClassName("page-title");
-        
-        H3 message = new H3("Vous devez être connecté pour accéder aux paramètres.");
-        message.addClassName("section-title");
-        
-        container.add(title, message);
     }
 
     private void chargerParametresExistants() {
