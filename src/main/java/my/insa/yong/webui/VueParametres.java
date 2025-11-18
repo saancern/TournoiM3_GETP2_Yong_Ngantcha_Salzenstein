@@ -322,17 +322,10 @@ public class VueParametres extends BaseLayout {
             // Sauvegarder le nouveau tournoi
             nouveauParametre.saveInDB(con);
             
-            // Créer les tables spécifiques au tournoi
-            int tournoiId = nouveauParametre.getId();
-            if (tournoiId > 1) { // Only create tournament-specific tables for new tournaments (not default)
-                try {
-                    GestionBdD.createTournamentTables(con, tournoiId);
-                    System.out.println("Tables du tournoi " + tournoiId + " créées automatiquement.");
-                } catch (SQLException ex) {
-                    System.err.println("Erreur lors de la création des tables du tournoi " + tournoiId + ": " + ex.getMessage());
-                    // Continue anyway - tournament is created, tables can be created later if needed
-                }
-            }
+            // With unified schema, no need to create tournament-specific tables
+            // All data is stored in unified tables with tournoi_id column
+            System.out.println("Tournoi " + nouveauParametre.getId() + " créé avec succès.");
+            System.out.println("(Utilisation du schéma unifié avec colonne tournoi_id pour l'isolation des données)");
             
             // Mettre à jour le paramètre actuel
             parametreActuel = nouveauParametre;
@@ -340,7 +333,7 @@ public class VueParametres extends BaseLayout {
             // Mettre à jour la session avec le nouveau tournoi
             UserSession.setCurrentTournoi(parametreActuel.getId(), parametreActuel.getNomTournoi());
             
-            Notification.show("Nouveau tournoi créé avec succès! (ID: " + tournoiId + ")",
+            Notification.show("Nouveau tournoi créé avec succès! (ID: " + parametreActuel.getId() + ")",
                              3000, Notification.Position.MIDDLE)
                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             
@@ -415,11 +408,21 @@ public class VueParametres extends BaseLayout {
                 System.out.println("Données du tournoi par défaut réinitialisées.");
                 
             } else {
-                // Pour les tournois spécifiques (ID > 1), suppression complète (tables + entrée dans tournoi)
-                GestionBdD.deleteTournamentCompletely(con, currentTournoiId);
-                
-                // Revenir au tournoi par défaut après suppression
-                UserSession.setCurrentTournoi(1, "Tournoi");
+                // For tournaments other than the default (ID > 1), delete the tournament entry
+                // This will cascade delete all associated data due to foreign key constraints
+                if (currentTournoiId != 1) {
+                    String deleteSql = "DELETE FROM tournoi WHERE id = ?";
+                    try (PreparedStatement pst = con.prepareStatement(deleteSql)) {
+                        pst.setInt(1, currentTournoiId);
+                        pst.executeUpdate();
+                        System.out.println("Tournoi " + currentTournoiId + " supprimé complètement (CASCADE delete appliqué).");
+                    }
+                    
+                    // Revenir au tournoi par défaut après suppression
+                    UserSession.setCurrentTournoi(1, "Tournoi");
+                } else {
+                    System.out.println("Le tournoi par défaut ne peut pas être supprimé.");
+                }
             }
             
             Notification.show("Tournoi réinitialisé avec succès!",
@@ -442,7 +445,7 @@ public class VueParametres extends BaseLayout {
     private void creerTournoiParDefautAvecId1(Connection con) throws SQLException {
         // Utiliser les valeurs spécifiées: ID=1, "Tournoi", "Foot", 10, 11
         String insertSql = "INSERT INTO tournoi (id, nom_tournoi, sport, nombre_terrains, nombre_joueurs_par_equipe) " +
-                          "VALUES (1, 'Tournoi', 'Foot', 10, 11)";
+                              " VALUES (?, ?, ?, ?, ?)";
         
         try (PreparedStatement pst = con.prepareStatement(insertSql)) {
             pst.executeUpdate();

@@ -47,13 +47,13 @@ public class Equipe extends ClasseMiroir {
 
     @Override
     protected Statement saveSansId(Connection con) throws SQLException {
-        // Use tournament-specific table names
+        // Use unified schema with tournoi_id column
         int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-        String equipeTable = tournoiId == 1 ? "equipe" : "equipe_" + tournoiId;
-        String sql = "INSERT INTO " + equipeTable + " (nom_equipe, date_creation) VALUES (?, ?)";
+        String sql = "INSERT INTO equipe (tournoi_id, nom_equipe, date_creation) VALUES (?, ?, ?)";
         PreparedStatement pst = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-        pst.setString(1, this.nomEquipe);
-        pst.setDate(2, Date.valueOf(this.dateCreation));
+        pst.setInt(1, tournoiId);
+        pst.setString(2, this.nomEquipe);
+        pst.setDate(3, Date.valueOf(this.dateCreation));
         pst.executeUpdate();
         return pst;
     }

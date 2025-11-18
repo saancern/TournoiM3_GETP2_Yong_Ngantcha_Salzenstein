@@ -112,25 +112,24 @@ public class VueJoueur_alle extends VerticalLayout {
         }
         
         int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-        String joueurTable = tournoiId == 1 ? "joueur" : "joueur_" + tournoiId;
-        String sql = "SELECT id, nom, prenom, age, sexe, taille FROM " + joueurTable + " " + orderByClause;
+        String sql = "SELECT id, nom, prenom, age, sexe, taille FROM joueur WHERE tournoi_id = ? " + orderByClause;
         
         try (Connection connection = ConnectionPool.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(sql);
-             ResultSet rs = pstmt.executeQuery()) {
-            
-            while (rs.next()) {
-                Joueur joueur = new Joueur(
-                    rs.getInt("id"),
-                    rs.getString("prenom"),
-                    rs.getString("nom"),
-                    rs.getInt("age"),
-                    rs.getString("sexe"),
-                    rs.getDouble("taille")
-                );
-                joueurs.add(joueur);
+             PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, tournoiId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Joueur joueur = new Joueur(
+                        rs.getInt("id"),
+                        rs.getString("prenom"),
+                        rs.getString("nom"),
+                        rs.getInt("age"),
+                        rs.getString("sexe"),
+                        rs.getDouble("taille")
+                    );
+                    joueurs.add(joueur);
+                }
             }
-            
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -356,16 +355,16 @@ public class VueJoueur_alle extends VerticalLayout {
     private String obtenirEquipesDuJoueur(int joueurId) {
         List<String> equipes = new ArrayList<>();
         int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-        String equipeTable = tournoiId == 1 ? "equipe" : "equipe_" + tournoiId;
-        String joueurEquipeTable = tournoiId == 1 ? "joueur_equipe" : "joueur_equipe_" + tournoiId;
-        String sql = "SELECT e.nom_equipe FROM " + equipeTable + " e " +
-                    "JOIN " + joueurEquipeTable + " je ON e.id = je.equipe_id " +
-                    "WHERE je.joueur_id = ?";
+        String sql = "SELECT e.nom_equipe FROM equipe e " +
+                    "JOIN joueur_equipe je ON e.id = je.equipe_id " +
+                    "WHERE je.joueur_id = ? AND je.tournoi_id = ? AND e.tournoi_id = ?";
         
         try (Connection connection = ConnectionPool.getConnection();
              PreparedStatement pstmt = connection.prepareStatement(sql)) {
             
             pstmt.setInt(1, joueurId);
+            pstmt.setInt(2, tournoiId);
+            pstmt.setInt(3, tournoiId);
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
                     equipes.add(rs.getString("nom_equipe"));
@@ -390,14 +389,10 @@ public class VueJoueur_alle extends VerticalLayout {
     private List<MatchInfo> obtenirMatchsDuJoueur(int joueurId) {
         List<MatchInfo> matches = new ArrayList<>();
         
-        // Get tournament-specific table names
+        // Using unified schema with tournoi_id column
         int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-        String rencontreTable = tournoiId == 1 ? "rencontre" : "rencontre_" + tournoiId;
-        String equipeTable = tournoiId == 1 ? "equipe" : "equipe_" + tournoiId;
-        String joueurEquipeTable = tournoiId == 1 ? "joueur_equipe" : "joueur_equipe_" + tournoiId;
         
-        // Requête SQL pour obtenir les matchs du joueur avec les équipes et scores
-        String sql = String.format("""
+        String sql = """
             SELECT DISTINCT
                 r.id as match_id,
                 r.score_a,
@@ -413,18 +408,23 @@ public class VueJoueur_alle extends VerticalLayout {
                     THEN CONCAT(r.score_a, ' - ', r.score_b)
                     ELSE 'Score non défini'
                 END as score
-            FROM %s r
-            JOIN %s ea ON r.equipe_a_id = ea.id
-            LEFT JOIN %s eb ON r.equipe_b_id = eb.id
-            JOIN %s je1 ON (je1.equipe_id = r.equipe_a_id OR je1.equipe_id = r.equipe_b_id)
-            WHERE je1.joueur_id = ?
+            FROM rencontre r
+            JOIN equipe ea ON r.equipe_a_id = ea.id AND ea.tournoi_id = ?
+            LEFT JOIN equipe eb ON r.equipe_b_id = eb.id AND eb.tournoi_id = ?
+            JOIN joueur_equipe je1 ON (je1.equipe_id = r.equipe_a_id OR je1.equipe_id = r.equipe_b_id) 
+                AND je1.joueur_id = ? AND je1.tournoi_id = ?
+            WHERE r.tournoi_id = ?
             ORDER BY r.round_number DESC, r.id DESC
-            """, rencontreTable, equipeTable, equipeTable, joueurEquipeTable);
+            """;
         
         try (Connection connection = ConnectionPool.getConnection();
              PreparedStatement pstmt = connection.prepareStatement(sql)) {
             
-            pstmt.setInt(1, joueurId);
+            pstmt.setInt(1, tournoiId);
+            pstmt.setInt(2, tournoiId);
+            pstmt.setInt(3, joueurId);
+            pstmt.setInt(4, tournoiId);
+            pstmt.setInt(5, tournoiId);
             
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {

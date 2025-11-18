@@ -1,7 +1,6 @@
 package my.insa.yong.model;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -31,24 +30,26 @@ public class GestionBdD {
                 + " pass varchar(20) not null,"
                 + " isAdmin boolean not null default false "
                 + ") ",
-            
-            // Table joueur (aucune dépendance)
+
+            // Table joueur (ajout tournoi_id)
             "create table joueur ( "
                 + ConnectionPool.sqlForGeneratedKeys(con, "id") + ","
                 + " prenom varchar(50) not null,"
                 + " nom varchar(50) not null,"
                 + " taille double precision not null,"
                 + " age int not null,"
-                + " sexe char(1) check (sexe in ('F','H'))"
+                + " sexe char(1) check (sexe in ('F','H')),"
+                + " tournoi_id int not null"
                 + ") ",
-            
-            // Table equipe (aucune dépendance)
+
+            // Table equipe (ajout tournoi_id)
             "create table equipe ( "
                 + ConnectionPool.sqlForGeneratedKeys(con, "id") + ","
                 + " nom_equipe varchar(50) not null,"
-                + " date_creation date not null"
+                + " date_creation date not null,"
+                + " tournoi_id int not null"
                 + ") ",
-            
+
             // Table tournoi (aucune dépendance)
             "create table tournoi ( "
                 + ConnectionPool.sqlForGeneratedKeys(con, "id") + ","
@@ -57,14 +58,15 @@ public class GestionBdD {
                 + " nombre_terrains int not null,"
                 + " nombre_joueurs_par_equipe int not null"
                 + ") ",
-            
-            // Table joueur_equipe (sans foreign keys d'abord)
+
+            // Table joueur_equipe (ajout tournoi_id)
             "create table joueur_equipe ( "
                 + " joueur_id int not null,"
                 + " equipe_id int not null,"
-                + " primary key (joueur_id, equipe_id)"
+                + " tournoi_id int not null,"
+                + " primary key (joueur_id, equipe_id, tournoi_id)"
                 + ") ",
-            
+
             // Table rencontre (matches) - dépend de tournoi et equipe
             "create table rencontre ( "
                 + ConnectionPool.sqlForGeneratedKeys(con, "id") + ","
@@ -78,45 +80,58 @@ public class GestionBdD {
                 + " winner_id int,"
                 + " played boolean not null default false"
                 + ") ",
-            
-            // Table but (goals) - dépend de rencontre, equipe et joueur
+
+            // Table but (ajout tournoi_id)
             "create table but ( "
                 + ConnectionPool.sqlForGeneratedKeys(con, "id") + ","
                 + " rencontre_id int not null,"
                 + " equipe_id int not null,"
                 + " joueur_id int not null,"
-                + " minute int"
+                + " minute int,"
+                + " tournoi_id int not null"
                 + ") "
         };
         
         // Définir les contraintes de clés étrangères à ajouter après
         String[] foreignKeyQueries = {
+            "alter table joueur add constraint fk_joueur_tournoi "
+                + " foreign key (tournoi_id) references tournoi(id) on delete cascade",
+
+            "alter table equipe add constraint fk_equipe_tournoi "
+                + " foreign key (tournoi_id) references tournoi(id) on delete cascade",
+
             "alter table joueur_equipe add constraint fk_joueur_equipe_joueur "
                 + " foreign key (joueur_id) references joueur(id) on delete cascade",
-            
+
             "alter table joueur_equipe add constraint fk_joueur_equipe_equipe "
                 + " foreign key (equipe_id) references equipe(id) on delete cascade",
-            
+
+            "alter table joueur_equipe add constraint fk_joueur_equipe_tournoi "
+                + " foreign key (tournoi_id) references tournoi(id) on delete cascade",
+
             "alter table rencontre add constraint fk_rencontre_tournoi "
                 + " foreign key (tournoi_id) references tournoi(id) on delete cascade",
-            
+
             "alter table rencontre add constraint fk_rencontre_equipe_a "
                 + " foreign key (equipe_a_id) references equipe(id) on delete cascade",
-            
+
             "alter table rencontre add constraint fk_rencontre_equipe_b "
                 + " foreign key (equipe_b_id) references equipe(id) on delete cascade",
-            
+
             "alter table rencontre add constraint fk_rencontre_winner "
                 + " foreign key (winner_id) references equipe(id) on delete set null",
-            
+
             "alter table but add constraint fk_but_rencontre "
                 + " foreign key (rencontre_id) references rencontre(id) on delete cascade",
-            
+
             "alter table but add constraint fk_but_equipe "
                 + " foreign key (equipe_id) references equipe(id) on delete cascade",
-            
+
             "alter table but add constraint fk_but_joueur "
-                + " foreign key (joueur_id) references joueur(id) on delete cascade"
+                + " foreign key (joueur_id) references joueur(id) on delete cascade",
+
+            "alter table but add constraint fk_but_tournoi "
+                + " foreign key (tournoi_id) references tournoi(id) on delete cascade"
         };
         
         String[] tableNames = {"utilisateur", "joueur", "equipe", "tournoi", "joueur_equipe", "rencontre", "but"};
@@ -397,304 +412,11 @@ public class GestionBdD {
         }
     }
     
-    // =================== TOURNAMENT-SPECIFIC TABLE METHODS ===================
-    
-    /**
-     * Creates tournament-specific tables for a given tournament ID
-     * Tables created: equipe_X, joueur_X, joueur_equipe_X, rencontre_X, but_X
-     * @param con Database connection
-     * @param tournoiId Tournament ID
-     * @throws SQLException If creation fails
-     */
-    public static void createTournamentTables(Connection con, int tournoiId) throws SQLException {
-        System.out.println("=== Création des tables pour le tournoi " + tournoiId + " ===");
-        
-        // Generate tournament-specific table creation queries
-        String[] createTableQueries = {
-            // Table equipe_X
-            "create table equipe_" + tournoiId + " ( "
-                + ConnectionPool.sqlForGeneratedKeys(con, "id") + ","
-                + " nom_equipe varchar(50) not null,"
-                + " date_creation date not null"
-                + ") ",
-            
-            // Table joueur_X  
-            "create table joueur_" + tournoiId + " ( "
-                + ConnectionPool.sqlForGeneratedKeys(con, "id") + ","
-                + " prenom varchar(50) not null,"
-                + " nom varchar(50) not null,"
-                + " taille double precision not null,"
-                + " age int not null,"
-                + " sexe char(1) check (sexe in ('F','H'))"
-                + ") ",
-            
-            // Table joueur_equipe_X
-            "create table joueur_equipe_" + tournoiId + " ( "
-                + " joueur_id int not null,"
-                + " equipe_id int not null,"
-                + " primary key (joueur_id, equipe_id)"
-                + ") ",
-            
-            // Table rencontre_X
-            "create table rencontre_" + tournoiId + " ( "
-                + ConnectionPool.sqlForGeneratedKeys(con, "id") + ","
-                + " tournoi_id int not null,"
-                + " round_number int not null,"
-                + " pool_index int,"
-                + " equipe_a_id int not null,"
-                + " equipe_b_id int,"
-                + " score_a int,"
-                + " score_b int,"
-                + " winner_id int,"
-                + " played boolean not null default false"
-                + ") ",
-            
-            // Table but_X
-            "create table but_" + tournoiId + " ( "
-                + ConnectionPool.sqlForGeneratedKeys(con, "id") + ","
-                + " rencontre_id int not null,"
-                + " equipe_id int not null,"
-                + " joueur_id int not null,"
-                + " minute int"
-                + ") "
-        };
-        
-        String[] tableNames = {"equipe_" + tournoiId, "joueur_" + tournoiId, 
-                              "joueur_equipe_" + tournoiId, "rencontre_" + tournoiId, "but_" + tournoiId};
-        
-        boolean oldAutoCommit = con.getAutoCommit();
-        SQLException lastException = null;
-        int successCount = 0;
-        
-        try {
-            con.setAutoCommit(false);
-            
-            try (Statement st = con.createStatement()) {
-                // Create tables
-                for (int i = 0; i < createTableQueries.length; i++) {
-                    try {
-                        st.executeUpdate(createTableQueries[i]);
-                        System.out.println("Table '" + tableNames[i] + "' créée avec succès.");
-                        successCount++;
-                    } catch (SQLException ex) {
-                        String errorMessage = ex.getMessage().toLowerCase();
-                        if (errorMessage.contains("already exists") || 
-                            errorMessage.contains("déjà exist") || 
-                            errorMessage.contains("table") && errorMessage.contains("exist")) {
-                            System.out.println("Table '" + tableNames[i] + "' existe déjà.");
-                            successCount++;
-                        } else {
-                            System.err.println("Erreur lors de la création de la table '" + tableNames[i] + "': " + ex.getMessage());
-                            lastException = ex;
-                        }
-                    }
-                }
-                
-                // Add foreign key constraints
-                addTournamentConstraints(con, st, tournoiId);
-                
-                if (successCount > 0) {
-                    con.commit();
-                    System.out.println("Tables du tournoi " + tournoiId + " créées avec succès (" + successCount + "/" + tableNames.length + ").");
-                } else {
-                    con.rollback();
-                    System.err.println("Aucune table n'a pu être créée pour le tournoi " + tournoiId + ".");
-                }
-            }
-            
-        } catch (SQLException ex) {
-            try {
-                con.rollback();
-            } catch (SQLException rollbackEx) {
-                System.err.println("Erreur lors du rollback: " + rollbackEx.getMessage());
-            }
-            throw ex;
-        } finally {
-            try {
-                con.setAutoCommit(oldAutoCommit);
-            } catch (SQLException ex) {
-                System.err.println("Erreur lors de la restauration d'autoCommit: " + ex.getMessage());
-            }
-        }
-        
-        if (successCount == 0 && lastException != null) {
-            throw lastException;
-        }
-    }
-    
-    /**
-     * Adds foreign key constraints for tournament-specific tables
-     */
-    private static void addTournamentConstraints(Connection con, Statement st, int tournoiId) throws SQLException {
-        String[] constraintQueries = {
-            "alter table joueur_equipe_" + tournoiId + " add constraint fk_joueur_equipe_joueur_" + tournoiId +
-                " foreign key (joueur_id) references joueur_" + tournoiId + "(id) on delete cascade",
-            
-            "alter table joueur_equipe_" + tournoiId + " add constraint fk_joueur_equipe_equipe_" + tournoiId +
-                " foreign key (equipe_id) references equipe_" + tournoiId + "(id) on delete cascade",
-            
-            "alter table rencontre_" + tournoiId + " add constraint fk_rencontre_tournoi_" + tournoiId +
-                " foreign key (tournoi_id) references tournoi(id) on delete cascade",
-            
-            "alter table rencontre_" + tournoiId + " add constraint fk_rencontre_equipe_a_" + tournoiId +
-                " foreign key (equipe_a_id) references equipe_" + tournoiId + "(id) on delete cascade",
-            
-            "alter table rencontre_" + tournoiId + " add constraint fk_rencontre_equipe_b_" + tournoiId +
-                " foreign key (equipe_b_id) references equipe_" + tournoiId + "(id) on delete cascade",
-            
-            "alter table rencontre_" + tournoiId + " add constraint fk_rencontre_winner_" + tournoiId +
-                " foreign key (winner_id) references equipe_" + tournoiId + "(id) on delete set null",
-            
-            "alter table but_" + tournoiId + " add constraint fk_but_rencontre_" + tournoiId +
-                " foreign key (rencontre_id) references rencontre_" + tournoiId + "(id) on delete cascade",
-            
-            "alter table but_" + tournoiId + " add constraint fk_but_equipe_" + tournoiId +
-                " foreign key (equipe_id) references equipe_" + tournoiId + "(id) on delete cascade",
-            
-            "alter table but_" + tournoiId + " add constraint fk_but_joueur_" + tournoiId +
-                " foreign key (joueur_id) references joueur_" + tournoiId + "(id) on delete cascade"
-        };
-        
-        String[] constraintNames = {
-            "fk_joueur_equipe_joueur_" + tournoiId, "fk_joueur_equipe_equipe_" + tournoiId,
-            "fk_rencontre_tournoi_" + tournoiId, "fk_rencontre_equipe_a_" + tournoiId, 
-            "fk_rencontre_equipe_b_" + tournoiId, "fk_rencontre_winner_" + tournoiId,
-            "fk_but_rencontre_" + tournoiId, "fk_but_equipe_" + tournoiId, "fk_but_joueur_" + tournoiId
-        };
-        
-        System.out.println("=== Ajout des contraintes pour le tournoi " + tournoiId + " ===");
-        for (int i = 0; i < constraintQueries.length; i++) {
-            try {
-                st.executeUpdate(constraintQueries[i]);
-                System.out.println("Contrainte '" + constraintNames[i] + "' ajoutée avec succès.");
-            } catch (SQLException ex) {
-                String errorMessage = ex.getMessage().toLowerCase();
-                if (errorMessage.contains("already exists") || 
-                    errorMessage.contains("déjà exist") || 
-                    errorMessage.contains("constraint") && errorMessage.contains("exist")) {
-                    System.out.println("Contrainte '" + constraintNames[i] + "' existe déjà.");
-                } else {
-                    System.err.println("Erreur lors de l'ajout de la contrainte '" + constraintNames[i] + "': " + ex.getMessage());
-                }
-            }
-        }
-    }
-    
-    /**
-     * Deletes all tournament-specific tables for a given tournament ID
-     * @param con Database connection
-     * @param tournoiId Tournament ID (cannot be 1, the default tournament)
-     * @throws SQLException If deletion fails
-     */
-    public static void deleteTournamentTables(Connection con, int tournoiId) throws SQLException {
-        if (tournoiId == 1) {
-            throw new SQLException("Le tournoi par défaut (ID=1) ne peut pas être supprimé.");
-        }
-        
-        System.out.println("=== Suppression des tables pour le tournoi " + tournoiId + " ===");
-        
-        // Drop constraints first, then tables
-        String[] constraintQueries = {
-            "alter table but_" + tournoiId + " drop constraint if exists fk_but_rencontre_" + tournoiId,
-            "alter table but_" + tournoiId + " drop constraint if exists fk_but_equipe_" + tournoiId,
-            "alter table but_" + tournoiId + " drop constraint if exists fk_but_joueur_" + tournoiId,
-            "alter table rencontre_" + tournoiId + " drop constraint if exists fk_rencontre_tournoi_" + tournoiId,
-            "alter table rencontre_" + tournoiId + " drop constraint if exists fk_rencontre_equipe_a_" + tournoiId,
-            "alter table rencontre_" + tournoiId + " drop constraint if exists fk_rencontre_equipe_b_" + tournoiId,
-            "alter table rencontre_" + tournoiId + " drop constraint if exists fk_rencontre_winner_" + tournoiId,
-            "alter table joueur_equipe_" + tournoiId + " drop constraint if exists fk_joueur_equipe_joueur_" + tournoiId,
-            "alter table joueur_equipe_" + tournoiId + " drop constraint if exists fk_joueur_equipe_equipe_" + tournoiId
-        };
-        
-        String[] tableNames = {"but_" + tournoiId, "rencontre_" + tournoiId, "joueur_equipe_" + tournoiId, 
-                              "joueur_" + tournoiId, "equipe_" + tournoiId};
-        
-        try (Statement st = con.createStatement()) {
-            // Drop constraints
-            for (String query : constraintQueries) {
-                try {
-                    st.executeUpdate(query);
-                } catch (SQLException ex) {
-                    // Ignore constraint not found errors
-                }
-            }
-            
-            // Drop tables
-            for (String tableName : tableNames) {
-                try {
-                    st.executeUpdate("drop table if exists " + tableName);
-                    System.out.println("Table '" + tableName + "' supprimée avec succès.");
-                } catch (SQLException ex) {
-                    System.err.println("Erreur lors de la suppression de la table '" + tableName + "': " + ex.getMessage());
-                }
-            }
-        }
-        
-        System.out.println("Tables du tournoi " + tournoiId + " supprimées.");
-    }
-    
-    /**
-     * Utility method to get tournament-specific table name
-     * @param baseTableName Base table name (e.g., "equipe", "joueur", "rencontre", "but")
-     * @param tournoiId Tournament ID
-     * @return Tournament-specific table name (e.g., "equipe_2", "joueur_3")
-     */
-    public static String getTournamentTableName(String baseTableName, int tournoiId) {
-        return baseTableName + "_" + tournoiId;
-    }
-    
-    /**
-     * Checks if tournament-specific tables exist for a given tournament ID
-     * @param con Database connection
-     * @param tournoiId Tournament ID
-     * @return true if all tournament tables exist
-     */
-    public static boolean tournamentTablesExist(Connection con, int tournoiId) throws SQLException {
-        String[] tableNames = {"equipe_" + tournoiId, "joueur_" + tournoiId, 
-                              "joueur_equipe_" + tournoiId, "rencontre_" + tournoiId, "but_" + tournoiId};
-        
-        try (Statement st = con.createStatement()) {
-            for (String tableName : tableNames) {
-                try {
-                    ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM " + tableName);
-                    rs.close();
-                } catch (SQLException ex) {
-                    return false; // Table doesn't exist
-                }
-            }
-        }
-        return true; // All tables exist
-    }
-    
-    /**
-     * Completely deletes a tournament: both tournament-specific tables and the entry in tournoi table
-     * @param con Database connection
-     * @param tournoiId Tournament ID (cannot be 1, the default tournament)
-     * @throws SQLException If deletion fails
-     */
-    public static void deleteTournamentCompletely(Connection con, int tournoiId) throws SQLException {
-        if (tournoiId == 1) {
-            throw new SQLException("Le tournoi par défaut (ID=1) ne peut pas être supprimé complètement.");
-        }
-        
-        System.out.println("=== Suppression complète du tournoi " + tournoiId + " ===");
-        
-        // Delete the entry from tournoi table first (this will trigger CASCADE delete for rencontre_X entries)
-        String deleteTournoiSql = "DELETE FROM tournoi WHERE id = ?";
-        try (PreparedStatement pst = con.prepareStatement(deleteTournoiSql)) {
-            pst.setInt(1, tournoiId);
-            int rows = pst.executeUpdate();
-            if (rows > 0) {
-                System.out.println("Entrée du tournoi " + tournoiId + " supprimée de la table tournoi (CASCADE activé).");
-            } else {
-                System.out.println("Aucune entrée trouvée pour le tournoi " + tournoiId + " dans la table tournoi.");
-            }
-        }
-        
-        // Then delete tournament-specific tables (they should now be mostly empty due to CASCADE)
-        deleteTournamentTables(con, tournoiId);
-        
-        System.out.println("Tournoi " + tournoiId + " supprimé complètement (entrée + tables).");
-    }
+    // =================== UNIFIED SCHEMA NOTES ===================
+    // The database now uses a unified schema with tournoi_id column for tournament isolation.
+    // All tournament data (equipe, joueur, joueur_equipe, rencontre, but) is stored in single tables
+    // with tournoi_id NOT NULL column to isolate data per tournament.
+    // Legacy tournament-specific table creation/deletion methods have been removed.
+    // See createSchema() above for the current unified table structure.
 
 }

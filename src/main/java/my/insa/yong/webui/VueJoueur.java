@@ -42,6 +42,7 @@ public class VueJoueur extends BaseLayout {
     private ComboBox<Joueur> playerSelector;
     private Grid<Joueur> joueursGrid;
     private H2 titreForm;
+    private H2 titreTable;
     
     private enum OperationMode {
         AJOUTER, MODIFIER, SUPPRIMER
@@ -58,6 +59,7 @@ public class VueJoueur extends BaseLayout {
         tailleField = new NumberField("Taille (cm)");
         playerSelector = new ComboBox<>("Sélectionner un joueur");
         titreForm = new H2("Détails du joueur");
+        titreTable = new H2("Liste des joueurs");
         
         // Wrapper avec gradient background
         VerticalLayout wrapper = new VerticalLayout();
@@ -164,7 +166,6 @@ public class VueJoueur extends BaseLayout {
         rightPanel.setSpacing(true);
         rightPanel.setPadding(true);
 
-        H2 titreTable = new H2("Liste des joueurs");
         titreTable.addClassName("page-title");
 
         // Créer le tableau des joueurs
@@ -299,21 +300,21 @@ public class VueJoueur extends BaseLayout {
         
         try (Connection con = ConnectionPool.getConnection()) {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-            String joueurTable = tournoiId == 1 ? "joueur" : "joueur_" + tournoiId;
-            String sql = "SELECT id, prenom, nom, age, sexe, taille FROM " + joueurTable + " ORDER BY nom, prenom";
-            try (PreparedStatement pst = con.prepareStatement(sql);
-                 ResultSet rs = pst.executeQuery()) {
-                
-                while (rs.next()) {
-                    Joueur joueur = new Joueur(
-                        rs.getInt("id"),
-                        rs.getString("prenom"),
-                        rs.getString("nom"),
-                        rs.getInt("age"),
-                        rs.getString("sexe"),
-                        rs.getDouble("taille")
-                    );
-                    joueurs.add(joueur);
+            String sql = "SELECT id, prenom, nom, age, sexe, taille FROM joueur WHERE tournoi_id=? ORDER BY nom, prenom";
+            try (PreparedStatement pst = con.prepareStatement(sql)) {
+                pst.setInt(1, tournoiId);
+                try (ResultSet rs = pst.executeQuery()) {
+                    while (rs.next()) {
+                        Joueur joueur = new Joueur(
+                            rs.getInt("id"),
+                            rs.getString("prenom"),
+                            rs.getString("nom"),
+                            rs.getInt("age"),
+                            rs.getString("sexe"),
+                            rs.getDouble("taille")
+                        );
+                        joueurs.add(joueur);
+                    }
                 }
             }
             
@@ -446,10 +447,10 @@ public class VueJoueur extends BaseLayout {
 
         try (Connection con = ConnectionPool.getConnection()) {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-            String joueurTable = tournoiId == 1 ? "joueur" : "joueur_" + tournoiId;
-            String sql = "DELETE FROM " + joueurTable + " WHERE id = ?";
+            String sql = "DELETE FROM joueur WHERE id = ? AND tournoi_id = ?";
             try (PreparedStatement pst = con.prepareStatement(sql)) {
                 pst.setInt(1, joueurSelectionne.getId());
+                pst.setInt(2, tournoiId);
                 
                 int rows = pst.executeUpdate();
                 if (rows > 0) {
@@ -479,21 +480,22 @@ public class VueJoueur extends BaseLayout {
         
         try (Connection con = ConnectionPool.getConnection()) {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-            String joueurTable = tournoiId == 1 ? "joueur" : "joueur_" + tournoiId;
-            String sql = "SELECT * FROM " + joueurTable + " ORDER BY nom, prenom";
-            try (PreparedStatement pst = con.prepareStatement(sql);
-                 ResultSet rs = pst.executeQuery()) {
+            String sql = "SELECT * FROM joueur WHERE tournoi_id = ? ORDER BY nom, prenom";
+            try (PreparedStatement pst = con.prepareStatement(sql)) {
+                pst.setInt(1, tournoiId);
+                try (ResultSet rs = pst.executeQuery()) {
                 
-                while (rs.next()) {
-                    Joueur joueur = new Joueur(
-                        rs.getInt("id"),
-                        rs.getString("prenom"),
-                        rs.getString("nom"),
-                        rs.getInt("age"),
-                        rs.getString("sexe"),
-                        rs.getDouble("taille")
-                    );
-                    joueurs.add(joueur);
+                    while (rs.next()) {
+                        Joueur joueur = new Joueur(
+                            rs.getInt("id"),
+                            rs.getString("prenom"),
+                            rs.getString("nom"),
+                            rs.getInt("age"),
+                            rs.getString("sexe"),
+                            rs.getDouble("taille")
+                        );
+                        joueurs.add(joueur);
+                    }
                 }
             }
             
