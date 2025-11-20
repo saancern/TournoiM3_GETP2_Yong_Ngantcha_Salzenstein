@@ -1,13 +1,15 @@
 package my.insa.yong.utils.database;
 
+import java.io.Serializable;
 import java.sql.Connection;
-//import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 /**
  * Représente une entité de la base de donnée dans Java.
+ * !!!! VERSION 2 : la version 1 avait un bug grave
+ * 
  * <p>
  * permet de gérer les identificateurs créés automatiquement par le sgbd </p>
  * <p>
@@ -30,7 +32,7 @@ import java.sql.Statement;
  * Cette classe abstraite peut servir de base aux différentes classes
  * représentant effectivement des tables d'entités dans la BdD.</p>
  * <p>
- * ATTENTION : lz PreparedStatement utilisé dans saveSansId devra être créé avec
+ * ATTENTION : le PreparedStatement utilisé dans saveSansId devra être créé avec
  * l'option PreparedStatement.RETURN_GENERATED_KEYS
  * </p>
  * <p>
@@ -45,7 +47,9 @@ import java.sql.Statement;
  *
  * @author saancern
  */
-public abstract class ClasseMiroir {
+public abstract class ClasseMiroir implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private int id;
 
@@ -132,6 +136,10 @@ public abstract class ClasseMiroir {
 
     public int getId() {
         return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
     }
 
     @Override
