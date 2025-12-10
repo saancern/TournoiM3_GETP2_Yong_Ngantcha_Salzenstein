@@ -481,7 +481,9 @@ public class VueTerrain extends BaseLayout {
 
         terrainsGrid.setItems(terrains);
         terrainSelector.setItems(terrains);
-        matchTerrainSelector.setItems(terrains);
+        if (matchTerrainSelector != null) {
+            matchTerrainSelector.setItems(terrains);
+        }
     }
 
     private void chargerMatchs() {
@@ -523,21 +525,24 @@ public class VueTerrain extends BaseLayout {
         List<MatchInfo> matchs = new ArrayList<>();
         int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
         
+        // Récupère uniquement les matchs qui sont LIÉS à ce terrain spécifique
         String sql = "SELECT r.id, e1.nom_equipe as equipeA, e2.nom_equipe as equipeB, " +
-                     "COALESCE(tr.terrain_id, -1) as terrain_id, t.nom_terrain " +
+                     "t.id as terrain_id, t.nom_terrain " +
                      "FROM rencontre r " +
-                     "LEFT JOIN equipe e1 ON r.equipe_a_id = e1.id " +
-                     "LEFT JOIN equipe e2 ON r.equipe_b_id = e2.id " +
-                     "LEFT JOIN terrain_rencontre tr ON r.id = tr.rencontre_id AND tr.tournoi_id = ? " +
-                     "LEFT JOIN terrain t ON tr.terrain_id = t.id " +
-                     "WHERE r.tournoi_id = ? AND tr.terrain_id = ? " +
+                     "LEFT JOIN equipe e1 ON r.equipe_a_id = e1.id AND e1.tournoi_id = ? " +
+                     "LEFT JOIN equipe e2 ON r.equipe_b_id = e2.id AND e2.tournoi_id = ? " +
+                     "INNER JOIN terrain_rencontre tr ON r.id = tr.rencontre_id AND tr.tournoi_id = ? " +
+                     "INNER JOIN terrain t ON tr.terrain_id = t.id AND t.id = ? " +
+                     "WHERE r.tournoi_id = ? " +
                      "ORDER BY r.round_number, r.id";
 
         try (Connection con = ConnectionPool.getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setInt(1, tournoiId);
             pst.setInt(2, tournoiId);
-            pst.setInt(3, terrain.getId());
+            pst.setInt(3, tournoiId);
+            pst.setInt(4, terrain.getId());
+            pst.setInt(5, tournoiId);
             ResultSet rs = pst.executeQuery();
 
             while (rs.next()) {
