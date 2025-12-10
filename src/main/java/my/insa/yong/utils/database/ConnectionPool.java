@@ -1,11 +1,12 @@
 package my.insa.yong.utils.database;
 
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 
 /**
  * Modern connection pool implementation using HikariCP for better performance
@@ -57,7 +58,7 @@ public class ConnectionPool {
             config.setPassword(password);
             
             // Configuration du pool
-            config.setMaximumPoolSize(20); // Augmenté pour supporter plus d'utilisateurs
+            config.setMaximumPoolSize(2); // Augmenté pour supporter plus d'utilisateurs
             config.setMinimumIdle(5);
             config.setIdleTimeout(300000); // 5 minutes
             config.setMaxLifetime(1800000); // 30 minutes
@@ -85,7 +86,7 @@ public class ConnectionPool {
             dataSource = new HikariDataSource(config);
             initialized = true;
             
-            LOGGER.info("ConnectionPool initialized successfully with " + config.getMaximumPoolSize() + " max connections");
+            LOGGER.info("ConnectionPool initialized successfully with {0} max connections");
             
         } catch (ClassNotFoundException ex) {
             LOGGER.log(Level.SEVERE, "MySQL driver not found", ex);
@@ -106,7 +107,10 @@ public class ConnectionPool {
         
         try {
             Connection connection = dataSource.getConnection();
-            LOGGER.fine("Connection obtained from pool. Active connections: " + dataSource.getHikariPoolMXBean().getActiveConnections());
+            LOGGER.fine("Connection obtained from pool. Active connections: {0}");
+            if (LOGGER.isLoggable(Level.FINE)) {
+                LOGGER.log(Level.FINE, "Connection obtained from pool. Active connections: {0}", dataSource.getHikariPoolMXBean().getActiveConnections());
+            }
             return connection;
         } catch (SQLException ex) {
             LOGGER.log(Level.SEVERE, "Failed to get connection from pool", ex);
