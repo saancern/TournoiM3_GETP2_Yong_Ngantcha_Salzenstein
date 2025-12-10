@@ -367,19 +367,28 @@ public class GestionBdD {
     }
 
     /**
-     *
-     * @param args
+     * WARNING: This main method will DELETE ALL TABLES and rebuild schema.
+     * Only run this if you want to reset the database completely.
+     * 
+     * To safely check schema status without destroying data, use checkSchemaStatus() instead.
+     * 
+     * @args
      */
     public static void main(String[] args) {
         try (Connection con = ConnectionPool.getConnection()) {
-            System.out.println("=== AVANT RECONSTRUCTION ===");
+            // SAFE: Only check schema status, don't delete anything
+            System.out.println("=== STATUT ACTUEL DE LA BASE ===");
             checkSchemaStatus(con);
             
+            // Uncomment the lines below ONLY if you want to completely reset the database
+            // WARNING: This will DELETE ALL DATA
+            /*
             System.out.println("\n=== RECONSTRUCTION DE LA BASE ===");
             razBdd(con);
             
             System.out.println("\n=== APRÈS RECONSTRUCTION ===");
             checkSchemaStatus(con);
+            */
             
         } catch (SQLException ex) {
             throw new Error(ex);
