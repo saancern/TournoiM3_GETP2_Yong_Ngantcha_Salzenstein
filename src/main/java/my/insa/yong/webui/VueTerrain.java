@@ -46,6 +46,8 @@ public class VueTerrain extends BaseLayout {
     private ComboBox<Terrain> matchTerrainSelector;
     private Button lierButton;
 
+    private Grid<MatchInfo> terrainsMatchsGrid;
+
     private enum OperationMode {
         AJOUTER, MODIFIER, SUPPRIMER
     }
@@ -233,17 +235,30 @@ public class VueTerrain extends BaseLayout {
         titreTableau.addClassName("page-title");
 
         terrainsGrid = new Grid<>(Terrain.class, false);
-        terrainsGrid.setSizeFull();
+        terrainsGrid.setHeight("300px");
         terrainsGrid.addColumn(Terrain::getId).setHeader("ID").setWidth("10%");
         terrainsGrid.addColumn(Terrain::getNumero).setHeader("Numéro").setWidth("15%");
         terrainsGrid.addColumn(Terrain::getNomTerrain).setHeader("Nom").setWidth("50%");
         terrainsGrid.addColumn(this::compterMatchs).setHeader("Matchs assignés").setWidth("25%");
 
+        // Grid pour afficher les matchs liés au terrain sélectionné
+        terrainsMatchsGrid = new Grid<>(MatchInfo.class, false);
+        terrainsMatchsGrid.setHeight("200px");
+        terrainsMatchsGrid.addColumn(m -> String.format("Match %d", m.id)).setHeader("ID").setAutoWidth(true);
+        terrainsMatchsGrid.addColumn(MatchInfo::toString).setHeader("Match (A vs B)").setAutoWidth(true).setFlexGrow(1);
+        terrainsMatchsGrid.addColumn(m -> m.terrainNom != null ? m.terrainNom : "—").setHeader("Terrain assigné").setAutoWidth(true);
+
+        H3 titreMatchsLies = new H3("Matchs assignés au terrain sélectionné");
+        titreMatchsLies.addClassName("page-title");
+
         terrainsGrid.addSelectionListener(selection -> {
-            selection.getFirstSelectedItem().ifPresent(this::remplirFormulaire);
+            selection.getFirstSelectedItem().ifPresent(terrain -> {
+                remplirFormulaire(terrain);
+                chargerMatchsParTerrain(terrain);
+            });
         });
 
-        rightPanel.add(titreTableau, terrainsGrid);
+        rightPanel.add(titreTableau, terrainsGrid, titreMatchsLies, terrainsMatchsGrid);
     }
 
     private String compterMatchs(Terrain terrain) {
@@ -502,6 +517,43 @@ public class VueTerrain extends BaseLayout {
         }
 
         matchsGrid.setItems(matchs);
+    }
+
+    private void chargerMatchsParTerrain(Terrain terrain) {
+        List<MatchInfo> matchs = new ArrayList<>();
+        int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+        
+        String sql = "SELECT r.id, e1.nom_equipe as equipeA, e2.nom_equipe as equipeB, " +
+                     "COALESCE(tr.terrain_id, -1) as terrain_id, t.nom_terrain " +
+                     "FROM rencontre r " +
+                     "LEFT JOIN equipe e1 ON r.equipe_a_id = e1.id " +
+                     "LEFT JOIN equipe e2 ON r.equipe_b_id = e2.id " +
+                     "LEFT JOIN terrain_rencontre tr ON r.id = tr.rencontre_id AND tr.tournoi_id = ? " +
+                     "LEFT JOIN terrain t ON tr.terrain_id = t.id " +
+                     "WHERE r.tournoi_id = ? AND tr.terrain_id = ? " +
+                     "ORDER BY r.round_number, r.id";
+
+        try (Connection con = ConnectionPool.getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setInt(1, tournoiId);
+            pst.setInt(2, tournoiId);
+            pst.setInt(3, terrain.getId());
+            ResultSet rs = pst.executeQuery();
+
+            while (rs.next()) {
+                matchs.add(new MatchInfo(
+                        rs.getInt("id"),
+                        rs.getString("equipeA") != null ? rs.getString("equipeA") : "TBD",
+                        rs.getString("equipeB") != null ? rs.getString("equipeB") : "TBD",
+                        rs.getInt("terrain_id"),
+                        rs.getString("nom_terrain")
+                ));
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+
+        terrainsMatchsGrid.setItems(matchs);
     }
 
     private void afficherNotification(String message, NotificationVariant variant) {

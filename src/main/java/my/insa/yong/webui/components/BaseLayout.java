@@ -30,6 +30,7 @@ import my.insa.yong.webui.VueJoueur_alle;
 import my.insa.yong.webui.VueMatch;
 import my.insa.yong.webui.VueParametres;
 import my.insa.yong.webui.VuePrincipale;
+import my.insa.yong.webui.VueTerrain;
 
 /**
  * Layout de base avec navigation utilisant AppLayout de Vaadin
@@ -132,6 +133,7 @@ public class BaseLayout extends AppLayout {
         }
         
         nav.addItem(new SideNavItem("Équipes", VueEquipe.class));
+        nav.addItem(new SideNavItem("Terrains", VueTerrain.class));
         nav.addItem(new SideNavItem("Matchs", VueMatch.class));
         
         // Paramètres réservés aux administrateurs
