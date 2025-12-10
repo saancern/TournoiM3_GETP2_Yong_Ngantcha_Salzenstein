@@ -134,7 +134,12 @@ public class BaseLayout extends AppLayout {
         }
         
         nav.addItem(new SideNavItem("Équipes", VueEquipe.class));
-        nav.addItem(new SideNavItem("Terrains", VueTerrain.class));
+        
+        // Terrains réservés aux administrateurs
+        if (UserSession.adminConnected()) {
+            nav.addItem(new SideNavItem("Terrains", VueTerrain.class));
+        }
+        
         nav.addItem(new SideNavItem("Matchs", VueMatch.class));
         nav.addItem(new SideNavItem("Meilleurs Buteurs", VueBut_alle.class));
         
