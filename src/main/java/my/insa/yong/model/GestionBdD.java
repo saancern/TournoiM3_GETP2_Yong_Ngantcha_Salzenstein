@@ -89,6 +89,22 @@ public class GestionBdD {
                 + " joueur_id int not null,"
                 + " minute int,"
                 + " tournoi_id int not null"
+                + ") ",
+
+            // Table terrain (gestion des terrains)
+            "create table terrain ( "
+                + ConnectionPool.sqlForGeneratedKeys(con, "id") + ","
+                + " nom_terrain varchar(100) not null,"
+                + " numero int not null,"
+                + " tournoi_id int not null"
+                + ") ",
+
+            // Table terrain_rencontre (liaison N:N terrain-match)
+            "create table terrain_rencontre ( "
+                + " terrain_id int not null,"
+                + " rencontre_id int not null,"
+                + " tournoi_id int not null,"
+                + " primary key (terrain_id, rencontre_id, tournoi_id)"
                 + ") "
         };
         
@@ -131,13 +147,26 @@ public class GestionBdD {
                 + " foreign key (joueur_id) references joueur(id) on delete cascade",
 
             "alter table but add constraint fk_but_tournoi "
+                + " foreign key (tournoi_id) references tournoi(id) on delete cascade",
+
+            "alter table terrain add constraint fk_terrain_tournoi "
+                + " foreign key (tournoi_id) references tournoi(id) on delete cascade",
+
+            "alter table terrain_rencontre add constraint fk_terrain_rencontre_terrain "
+                + " foreign key (terrain_id) references terrain(id) on delete cascade",
+
+            "alter table terrain_rencontre add constraint fk_terrain_rencontre_rencontre "
+                + " foreign key (rencontre_id) references rencontre(id) on delete cascade",
+
+            "alter table terrain_rencontre add constraint fk_terrain_rencontre_tournoi "
                 + " foreign key (tournoi_id) references tournoi(id) on delete cascade"
         };
         
-        String[] tableNames = {"utilisateur", "joueur", "equipe", "tournoi", "joueur_equipe", "rencontre", "but"};
+        String[] tableNames = {"utilisateur", "joueur", "equipe", "tournoi", "joueur_equipe", "rencontre", "but", "terrain", "terrain_rencontre"};
         String[] constraintNames = {"fk_joueur_equipe_joueur", "fk_joueur_equipe_equipe", 
                                    "fk_rencontre_tournoi", "fk_rencontre_equipe_a", "fk_rencontre_equipe_b", 
-                                   "fk_rencontre_winner", "fk_but_rencontre", "fk_but_equipe", "fk_but_joueur"};
+                                   "fk_rencontre_winner", "fk_but_rencontre", "fk_but_equipe", "fk_but_joueur", 
+                                   "fk_terrain_tournoi", "fk_terrain_rencontre_terrain", "fk_terrain_rencontre_rencontre", "fk_terrain_rencontre_tournoi"};
         
         boolean oldAutoCommit = con.getAutoCommit();
         SQLException lastException = null;
@@ -243,6 +272,10 @@ public class GestionBdD {
             "alter table but drop constraint if exists fk_but_rencontre",
             "alter table but drop constraint if exists fk_but_equipe",
             "alter table but drop constraint if exists fk_but_joueur",
+            "alter table terrain_rencontre drop constraint if exists fk_terrain_rencontre_terrain",
+            "alter table terrain_rencontre drop constraint if exists fk_terrain_rencontre_rencontre",
+            "alter table terrain_rencontre drop constraint if exists fk_terrain_rencontre_tournoi",
+            "alter table terrain drop constraint if exists fk_terrain_tournoi",
             "alter table rencontre drop constraint if exists fk_rencontre_tournoi",
             "alter table rencontre drop constraint if exists fk_rencontre_equipe_a",
             "alter table rencontre drop constraint if exists fk_rencontre_equipe_b",
@@ -252,11 +285,12 @@ public class GestionBdD {
         };
         
         String[] constraintNames = {"fk_but_rencontre", "fk_but_equipe", "fk_but_joueur",
-                                   "fk_rencontre_tournoi", "fk_rencontre_equipe_a", "fk_rencontre_equipe_b", 
+                                   "fk_terrain_rencontre_terrain", "fk_terrain_rencontre_rencontre", "fk_terrain_rencontre_tournoi",
+                                   "fk_terrain_tournoi", "fk_rencontre_tournoi", "fk_rencontre_equipe_a", "fk_rencontre_equipe_b", 
                                    "fk_rencontre_winner", "fk_joueur_equipe_joueur", "fk_joueur_equipe_equipe"};
         
         // Définir les tables à supprimer dans l'ordre inverse des dépendances
-        String[] tableNames = {"but", "rencontre", "joueur_equipe", "tournoi", "equipe", "joueur", "utilisateur"};
+        String[] tableNames = {"terrain_rencontre", "but", "terrain", "rencontre", "joueur_equipe", "tournoi", "equipe", "joueur", "utilisateur"};
         
         int constraintCount = 0;
         int successCount = 0;

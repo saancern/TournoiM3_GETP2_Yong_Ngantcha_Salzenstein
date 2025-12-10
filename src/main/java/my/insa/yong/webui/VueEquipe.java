@@ -28,10 +28,10 @@ import com.vaadin.flow.router.Route;
 
 import my.insa.yong.model.Equipe;
 import my.insa.yong.model.Joueur;
+import my.insa.yong.model.Parametre;
 import my.insa.yong.model.UserSession;
 import my.insa.yong.utils.database.ConnectionPool;
 import my.insa.yong.webui.components.BaseLayout;
-import my.insa.yong.model.Parametre;
 
 @Route("equipe")
 @PageTitle("Équipe")
@@ -293,7 +293,7 @@ public class VueEquipe extends BaseLayout {
 
         // Validation du nombre minimum de joueurs selon le tournoi actuel
         int minJoueurs = UserSession.getCurrentTournoiNombreJoueursParEquipe();
-        if (joueursSelectionnes.size() < minJoueurs) {
+        if (joueursSelectionnes.size() <= minJoueurs) {
             Notification.show("⚠️ ERREUR : Une équipe doit contenir au minimum " + minJoueurs + " joueurs. Vous en avez sélectionné " + joueursSelectionnes.size() + ".",
                     4000, Notification.Position.TOP_CENTER)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);

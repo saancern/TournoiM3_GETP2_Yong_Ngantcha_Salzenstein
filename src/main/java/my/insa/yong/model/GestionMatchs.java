@@ -185,7 +185,7 @@ public class GestionMatchs {
         if (joueurs.isEmpty()) return;
 
         try (PreparedStatement ins = con.prepareStatement(
-            "INSERT INTO but (rencontre_id, equipe_id, joueur_id, minute) VALUES (?,?,?,?)")) {
+            "INSERT INTO but (rencontre_id, equipe_id, joueur_id, minute, tournoi_id) VALUES (?,?,?,?,?)")) {
             for (int i = 0; i < nbButs; i++) {
                 int j = joueurs.get(rnd.nextInt(joueurs.size()));
                 Integer minute = 1 + rnd.nextInt(90); // 1..90
@@ -193,6 +193,7 @@ public class GestionMatchs {
                 ins.setInt(2, equipeId);
                 ins.setInt(3, j);
                 ins.setInt(4, minute);
+                ins.setInt(5, tournoiId);
                 ins.addBatch();
             }
             ins.executeBatch();
@@ -468,11 +469,12 @@ public class GestionMatchs {
         }
 
         try (PreparedStatement ins = con.prepareStatement(
-                "INSERT INTO but (rencontre_id, equipe_id, joueur_id, minute) VALUES (?,?,?,?)")) {
+                "INSERT INTO but (rencontre_id, equipe_id, joueur_id, minute, tournoi_id) VALUES (?,?,?,?,?)")) {
             ins.setInt(1, matchId);
             ins.setInt(2, equipeId);
             ins.setInt(3, joueurId);
             if (minute == null) ins.setNull(4, Types.INTEGER); else ins.setInt(4, minute);
+            ins.setInt(5, tournoiId);
             ins.executeUpdate();
         }
         recomputeScoreFromGoals(con, tournoiId, matchId);
