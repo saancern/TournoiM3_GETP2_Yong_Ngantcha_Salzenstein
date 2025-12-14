@@ -163,9 +163,10 @@ public class GestionBdD {
         };
         
         String[] tableNames = {"utilisateur", "joueur", "equipe", "tournoi", "joueur_equipe", "rencontre", "but", "terrain", "terrain_rencontre"};
-        String[] constraintNames = {"fk_joueur_equipe_joueur", "fk_joueur_equipe_equipe", 
+        String[] constraintNames = {"fk_joueur_tournoi", "fk_equipe_tournoi",
+                                   "fk_joueur_equipe_joueur", "fk_joueur_equipe_equipe", "fk_joueur_equipe_tournoi",
                                    "fk_rencontre_tournoi", "fk_rencontre_equipe_a", "fk_rencontre_equipe_b", 
-                                   "fk_rencontre_winner", "fk_but_rencontre", "fk_but_equipe", "fk_but_joueur", 
+                                   "fk_rencontre_winner", "fk_but_rencontre", "fk_but_equipe", "fk_but_joueur", "fk_but_tournoi",
                                    "fk_terrain_tournoi", "fk_terrain_rencontre_terrain", "fk_terrain_rencontre_rencontre", "fk_terrain_rencontre_tournoi"};
         
         boolean oldAutoCommit = con.getAutoCommit();

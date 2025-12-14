@@ -687,3 +687,100 @@ vaadin-router-link {
   padding-top: var(--lumo-space-m);
   border-top: 1px solid var(--lumo-contrast-10pct);
 }
+
+/* ===== BUTEURS PODIUM STYLES ===== */
+vaadin-grid.buteurs-grid {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+vaadin-grid::part(row).gold-row {
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%) !important;
+  font-weight: 700 !important;
+  color: #2c3e50 !important;
+  border-left: 5px solid #ffc107 !important;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3) !important;
+  transition: all 0.3s ease !important;
+}
+
+vaadin-grid::part(row).gold-row:hover {
+  transform: scale(1.01) !important;
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.5) !important;
+}
+
+vaadin-grid::part(row).silver-row {
+  background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%) !important;
+  font-weight: 600 !important;
+  color: #2c3e50 !important;
+  border-left: 5px solid #9e9e9e !important;
+  box-shadow: 0 2px 6px rgba(192, 192, 192, 0.3) !important;
+  transition: all 0.3s ease !important;
+}
+
+vaadin-grid::part(row).silver-row:hover {
+  transform: scale(1.01) !important;
+  box-shadow: 0 4px 10px rgba(192, 192, 192, 0.5) !important;
+}
+
+vaadin-grid::part(row).bronze-row {
+  background: linear-gradient(135deg, #cd7f32 0%, #e6a96c 100%) !important;
+  font-weight: 600 !important;
+  color: #2c3e50 !important;
+  border-left: 5px solid #b8733e !important;
+  box-shadow: 0 2px 6px rgba(205, 127, 50, 0.3) !important;
+  transition: all 0.3s ease !important;
+}
+
+vaadin-grid::part(row).bronze-row:hover {
+  transform: scale(1.01) !important;
+  box-shadow: 0 4px 10px rgba(205, 127, 50, 0.5) !important;
+}
+
+vaadin-grid::part(cell).gold-row,
+vaadin-grid::part(cell).silver-row,
+vaadin-grid::part(cell).bronze-row {
+  font-size: 1.05em !important;
+  padding: 14px 10px !important;
+}
+
+/* Animation pour les lignes de la grille */
+vaadin-grid::part(row) {
+  transition: background-color 0.2s ease, transform 0.2s ease !important;
+}
+
+vaadin-grid::part(row):hover {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Style pour les headers de la grille buteurs */
+vaadin-grid.buteurs-grid::part(header-cell) {
+  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%) !important;
+  font-weight: 700 !important;
+  font-size: 0.95em !important;
+  color: #2c3e50 !important;
+  border-bottom: 2px solid var(--primary-color) !important;
+}
+
+/* Amélioration des tabs */
+vaadin-tabs {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-radius: 8px 8px 0 0;
+  background: white;
+  padding: 0.5rem;
+}
+
+vaadin-tab {
+  transition: all 0.3s ease;
+}
+
+vaadin-tab[selected] {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  color: white !important;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
