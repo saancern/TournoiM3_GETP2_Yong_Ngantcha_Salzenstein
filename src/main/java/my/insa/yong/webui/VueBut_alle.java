@@ -79,12 +79,12 @@ public class VueBut_alle extends VerticalLayout {
 
         public int getPlace() { return place; }
         public String getPlaceFormatted() {
-            switch (place) {
-                case 1: return "🥇 1er";
-                case 2: return "🥈 2ème";
-                case 3: return "🥉 3ème";
-                default: return String.valueOf(place);
-            }
+            return switch (place) {
+                case 1 -> "🥇 1er";
+                case 2 -> "🥈 2ème";
+                case 3 -> "🥉 3ème";
+                default -> String.valueOf(place);
+            };
         }
         public String getNomJoueur() { return nomJoueur; }
         public String getNomEquipe() { return nomEquipe; }
@@ -95,6 +95,30 @@ public class VueBut_alle extends VerticalLayout {
         public String getMoyenneFormatted() { return String.format("%.2f", moyenne); }
 
         public void setPlace(int place) { this.place = place; }
+
+        public double getMoyenne() {
+            return moyenne;
+        }
+
+        public void setMoyenne(double moyenne) {
+            this.moyenne = moyenne;
+        }
+
+        public void setMatchsJoues(int matchsJoues) {
+            this.matchsJoues = matchsJoues;
+        }
+
+        public void setNombreButs(int nombreButs) {
+            this.nombreButs = nombreButs;
+        }
+
+        public void setNomEquipe(String nomEquipe) {
+            this.nomEquipe = nomEquipe;
+        }
+
+        public void setNomJoueur(String nomJoueur) {
+            this.nomJoueur = nomJoueur;
+        }
     }
 
     public VueBut_alle() {
@@ -164,6 +188,7 @@ public class VueBut_alle extends VerticalLayout {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private Grid<ButeurInfo> createGrid(boolean showTournoi) {
         Grid<ButeurInfo> grid = new Grid<>(ButeurInfo.class, false);
         grid.setSizeFull();
@@ -268,7 +293,6 @@ public class VueBut_alle extends VerticalLayout {
                 place++;
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
         }
 
         gridCurrentTournoi.setItems(buteurs);
@@ -313,7 +337,6 @@ public class VueBut_alle extends VerticalLayout {
                 place++;
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
         }
 
         gridAllTournois.setItems(buteurs);

@@ -273,7 +273,6 @@ public class VueTerrain extends BaseLayout {
                 return String.valueOf(rs.getInt(1));
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
         }
         return "0";
     }
@@ -342,7 +341,6 @@ public class VueTerrain extends BaseLayout {
             chargerTerrains();
         } catch (SQLException ex) {
             afficherNotification("Erreur: " + ex.getMessage(), NotificationVariant.LUMO_ERROR);
-            ex.printStackTrace();
         }
     }
 
@@ -371,7 +369,6 @@ public class VueTerrain extends BaseLayout {
             setMode(OperationMode.AJOUTER);
         } catch (SQLException ex) {
             afficherNotification("Erreur: " + ex.getMessage(), NotificationVariant.LUMO_ERROR);
-            ex.printStackTrace();
         }
     }
 
@@ -404,7 +401,6 @@ public class VueTerrain extends BaseLayout {
                 setMode(OperationMode.AJOUTER);
             } catch (SQLException ex) {
                 afficherNotification("Erreur: " + ex.getMessage(), NotificationVariant.LUMO_ERROR);
-                ex.printStackTrace();
             }
         });
 
@@ -454,7 +450,6 @@ public class VueTerrain extends BaseLayout {
             matchsGrid.deselectAll();
         } catch (SQLException ex) {
             afficherNotification("Erreur: " + ex.getMessage(), NotificationVariant.LUMO_ERROR);
-            ex.printStackTrace();
         }
     }
 
@@ -476,7 +471,6 @@ public class VueTerrain extends BaseLayout {
                 ));
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
         }
 
         terrainsGrid.setItems(terrains);
@@ -515,7 +509,6 @@ public class VueTerrain extends BaseLayout {
                 ));
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
         }
 
         matchsGrid.setItems(matchs);
@@ -555,7 +548,6 @@ public class VueTerrain extends BaseLayout {
                 ));
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
         }
 
         terrainsMatchsGrid.setItems(matchs);
