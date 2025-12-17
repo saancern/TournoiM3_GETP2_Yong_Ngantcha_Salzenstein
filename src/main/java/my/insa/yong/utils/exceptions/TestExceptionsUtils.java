@@ -12,7 +12,7 @@ public class TestExceptionsUtils {
     public static void test() {
         try {
             throw new RuntimeException("coucou");
-        } catch (Exception ex) {
+        } catch (RuntimeException ex) {
             System.out.println(ExceptionsUtils.messageEtPremiersAppelsDansPackage(ex, "fr.insa.beuvron", 5));
         }
         throw new RuntimeException("coucou2");

@@ -375,12 +375,12 @@ public class GestionBdD {
         try (Statement st = con.createStatement()) {
             for (String tableName : tableNames) {
                 try {
-                    ResultSet rs = st.executeQuery("SELECT COUNT(*) as count FROM " + tableName);
-                    if (rs.next()) {
-                        int count = rs.getInt("count");
-                        System.out.println("Table '" + tableName + "': existe (" + count + " ligne(s))");
+                    try (ResultSet rs = st.executeQuery("SELECT COUNT(*) as count FROM " + tableName)) {
+                        if (rs.next()) {
+                            int count = rs.getInt("count");
+                            System.out.println("Table '" + tableName + "': existe (" + count + " ligne(s))");
+                        }
                     }
-                    rs.close();
                 } catch (SQLException ex) {
                     System.out.println("Table '" + tableName + "': n'existe pas ou inaccessible");
                 }

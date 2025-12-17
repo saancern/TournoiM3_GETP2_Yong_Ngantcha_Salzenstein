@@ -67,6 +67,16 @@ public class VueBut_alle extends VerticalLayout {
             this.moyenne = 0.0;
         }
 
+        public ButeurInfo(int matchsJoues, double moyenne, String nomEquipe, String nomJoueur, String nomTournoi, int nombreButs, int place) {
+            this.matchsJoues = matchsJoues;
+            this.moyenne = moyenne;
+            this.nomEquipe = nomEquipe;
+            this.nomJoueur = nomJoueur;
+            this.nomTournoi = nomTournoi;
+            this.nombreButs = nombreButs;
+            this.place = place;
+        }
+
         public int getPlace() { return place; }
         public String getPlaceFormatted() {
             switch (place) {

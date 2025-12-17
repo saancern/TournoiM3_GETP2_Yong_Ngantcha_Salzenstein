@@ -1,12 +1,13 @@
 package my.insa.yong.utils.list;
 
-import my.insa.yong.utils.ConsoleFdB;
-import my.insa.yong.utils.StringUtil;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
+
+import my.insa.yong.utils.ConsoleFdB;
+import my.insa.yong.utils.StringUtil;
 
 /**
  *
@@ -72,14 +73,15 @@ public class ListUtils {
             String beforeNum, int debutNumerotation, String betweenNumAndVal, String afterVal,
             ElemFormatter<? super E> formatter) {
         StringBuilder res = new StringBuilder();
-        if (list.size() != 0) {
+        if (!list.isEmpty()) {
             int nbrDigit = (int) Math.floor(Math.log10(list.size())) + 1;
             String beforeOtherLines = StringUtil.mult(" ", beforeNum.length() + nbrDigit) + betweenNumAndVal;
             for (int i = 0; i < list.size(); i++) {
                 String beforeFirstLine = beforeNum
                         + String.format("%" + nbrDigit + "d", (i + debutNumerotation))
                         + betweenNumAndVal;
-                res.append(StringUtil.specialIndent(formatter.format(list.get(i)), beforeFirstLine, beforeOtherLines));
+                String formatted = formatter.format(list.get(i));
+                res.append(StringUtil.specialIndent(formatted, beforeFirstLine, beforeOtherLines));
                 res.append(afterVal);
             }
         }
@@ -167,7 +169,7 @@ public class ListUtils {
     public static <E> List<E> selectMultiple(String titre,
             List<E> selectionnables,
             ElemFormatter<? super E> formatter) {
-        return selectMultiple(titre, new LinkedList<E>(), selectionnables, formatter);
+        return selectMultiple(titre, new LinkedList<>(), selectionnables, formatter);
     }
     
     public static void testSelMult() {

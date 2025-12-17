@@ -268,15 +268,9 @@ public class VueEquipe extends BaseLayout {
 
     private void executerOperation() {
         switch (currentMode) {
-            case AJOUTER:
-                ajouterEquipe();
-                break;
-            case MODIFIER:
-                modifierEquipe();
-                break;
-            case SUPPRIMER:
-                supprimerEquipe();
-                break;
+            case AJOUTER -> ajouterEquipe();
+            case MODIFIER -> modifierEquipe();
+            case SUPPRIMER -> supprimerEquipe();
         }
     }
 
