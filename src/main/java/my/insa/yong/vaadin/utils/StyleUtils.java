@@ -95,15 +95,9 @@ public class StyleUtils {
      */
     public static void styleFormField(Component field, FieldSize size) {
         switch (size) {
-            case NORMAL:
-                field.addClassName(FORM_FIELD);
-                break;
-            case WIDE:
-                field.addClassName(FORM_FIELD_WIDE);
-                break;
-            case SMALL:
-                field.addClassName(FORM_FIELD_SMALL);
-                break;
+            case NORMAL -> field.addClassName(FORM_FIELD);
+            case WIDE -> field.addClassName(FORM_FIELD_WIDE);
+            case SMALL -> field.addClassName(FORM_FIELD_SMALL);
         }
     }
     
@@ -113,18 +107,10 @@ public class StyleUtils {
     public static void styleButton(Button button, ButtonType type, ButtonSize size) {
         // Apply type styling
         switch (type) {
-            case PRIMARY:
-                button.addClassName(BTN_PRIMARY);
-                break;
-            case SUCCESS:
-                button.addClassName(BTN_SUCCESS);
-                break;
-            case WARNING:
-                button.addClassName(BTN_WARNING);
-                break;
-            case DANGER:
-                button.addClassName(BTN_DANGER);
-                break;
+            case PRIMARY -> button.addClassName(BTN_PRIMARY);
+            case SUCCESS -> button.addClassName(BTN_SUCCESS);
+            case WARNING -> button.addClassName(BTN_WARNING);
+            case DANGER -> button.addClassName(BTN_DANGER);
         }
         
         // Apply size styling

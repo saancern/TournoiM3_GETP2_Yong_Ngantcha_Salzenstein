@@ -24,11 +24,11 @@ public class GestionMatchs {
      * No longer creating per-tournament tables (equipe_2, joueur_2, etc.)
      */
         // All tables now use a single schema with tournoi_id column
-        static String getEquipeTable() { return "equipe"; }
+        /*static String getEquipeTable() { return "equipe"; }
         static String getJoueurTable() { return "joueur"; }
         static String getJoueurEquipeTable() { return "joueur_equipe"; }
         static String getRencontreTable() { return "rencontre"; }
-        static String getButTable() { return "but"; }
+        static String getButTable() { return "but"; }*/
 
         // All CRUD operations below must use tournoi_id in WHERE, INSERT, UPDATE, DELETE queries
         // Example for SELECT:

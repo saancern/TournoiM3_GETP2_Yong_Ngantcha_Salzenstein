@@ -204,24 +204,24 @@ public class VueEquipe extends BaseLayout {
         currentMode = mode;
 
         switch (mode) {
-            case AJOUTER:
+            case AJOUTER -> {
                 titreForm.setText("Ajouter une équipe");
                 equipeSelector.setVisible(false);
                 submitButton.setText("Ajouter");
                 viderFormulaire();
-                break;
-            case MODIFIER:
+            }
+            case MODIFIER -> {
                 titreForm.setText("Modifier une équipe");
                 equipeSelector.setVisible(true);
                 submitButton.setText("Modifier");
                 chargerEquipesPourSelection();
-                break;
-            case SUPPRIMER:
+            }
+            case SUPPRIMER -> {
                 titreForm.setText("Supprimer une équipe");
                 equipeSelector.setVisible(true);
                 submitButton.setText("Supprimer");
                 chargerEquipesPourSelection();
-                break;
+            }
         }
     }
 
