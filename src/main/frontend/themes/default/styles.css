@@ -784,3 +784,97 @@ vaadin-tab[selected] {
   font-weight: 600;
 }
 
+/* ===== BUTEURS PODIUM (3 COLORED BLOCKS) ===== */
+.podium-container {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 16px 12px;
+
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 20px;
+
+  flex-wrap: wrap;
+  box-sizing: border-box;
+}
+
+/* Each column grows/shrinks nicely instead of a hard 240px layout */
+.podium-column {
+  flex: 1 1 280px;        /* grow + responsive basis */
+  max-width: 380px;       /* prevents giant boxes on huge screens */
+  min-width: 220px;       /* prevents too-narrow boxes */
+  align-items: center;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.podium-title {
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--primary-color);
+}
+
+.podium-box {
+  width: 100%;            /* IMPORTANT: no fixed 240px width */
+  box-sizing: border-box;
+
+  border-radius: 14px;
+  padding: 14px 12px;
+  box-shadow: var(--shadow);
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+
+  color: #2c3e50;
+  border: 1px solid rgba(0,0,0,0.06);
+
+  /* IMPORTANT: keep podium visually stable even if many ties */
+  overflow-y: auto;
+}
+
+/* Fixed “podium step” heights */
+.podium-col-first .podium-box { height: 240px; }
+.podium-col-second .podium-box { height: 190px; }
+.podium-col-third .podium-box { height: 160px; }
+
+.podium-box-gold {
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+  border-left: 6px solid #ffc107;
+}
+
+.podium-box-silver {
+  background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
+  border-left: 6px solid #9e9e9e;
+}
+
+.podium-box-bronze {
+  background: linear-gradient(135deg, #cd7f32 0%, #e6a96c 100%);
+  border-left: 6px solid #b8733e;
+}
+
+.podium-box:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.14);
+}
+
+.podium-player-name {
+  font-weight: 700;
+  font-size: 1.02em;
+  line-height: 1.2;
+
+  /* IMPORTANT: avoid overflow forcing weird widths */
+  white-space: normal;
+  word-break: break-word;
+}
+
+.podium-player-empty {
+  opacity: 0.75;
+  font-weight: 700;
+  font-size: 1.1em;
+}
