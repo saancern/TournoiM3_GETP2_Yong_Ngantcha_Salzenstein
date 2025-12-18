@@ -24,7 +24,7 @@ import my.insa.yong.model.UserSession;
 import my.insa.yong.utils.database.ConnectionPool;
 import my.insa.yong.webui.components.BaseLayout;
 
-@PageTitle("Meilleurs Buteurs")
+@PageTitle("Meilleurs Joueurs")
 @Route(value = "buteurs", layout = BaseLayout.class)
 public class VueBut_alle extends VerticalLayout {
 
@@ -129,7 +129,7 @@ public class VueBut_alle extends VerticalLayout {
         addClassName("app-container");
 
         // Titre
-        H2 titre = new H2("🏆 Classement des Meilleurs Buteurs");
+        H2 titre = new H2("🏆 Classement des Meilleurs Joueurs");
         titre.addClassName("page-title");
         add(titre);
 

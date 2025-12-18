@@ -144,7 +144,7 @@ public class BaseLayout extends AppLayout {
         }
         
         nav.addItem(new SideNavItem("Matchs", VueMatch.class));
-        nav.addItem(new SideNavItem("Meilleurs Buteurs", VueBut_alle.class));
+        nav.addItem(new SideNavItem("Meilleurs Joueurs", VueBut_alle.class));
         
         // Paramètres réservés aux administrateurs
         if (UserSession.adminConnected()) {

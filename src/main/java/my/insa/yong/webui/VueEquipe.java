@@ -232,6 +232,10 @@ public class VueEquipe extends BaseLayout {
         // Charger les joueurs de l'équipe
         List<Joueur> joueursEquipe = chargerJoueursEquipe(equipe.getId());
         Set<Joueur> joueursSelectionnes = new HashSet<>(joueursEquipe);
+        
+        // Recharger les joueurs disponibles pour la modification (inclut ceux de l'équipe actuelle)
+        chargerJoueursDisponiblesPourModification(equipe.getId());
+        
         joueursComboBox.setValue(joueursSelectionnes);
     }
 
@@ -287,8 +291,8 @@ public class VueEquipe extends BaseLayout {
 
         // Validation du nombre minimum de joueurs selon le tournoi actuel
         int minJoueurs = UserSession.getCurrentTournoiNombreJoueursParEquipe();
-        if (joueursSelectionnes.size() < minJoueurs) {
-            Notification.show("⚠️ ERREUR : Une équipe doit contenir au minimum " + minJoueurs + " joueurs. Vous en avez sélectionné " + joueursSelectionnes.size() + ".",
+        if (joueursSelectionnes == null || joueursSelectionnes.isEmpty() || joueursSelectionnes.size() < minJoueurs) {
+            Notification.show("⚠️ ERREUR : Une équipe doit contenir au minimum " + minJoueurs + " joueurs. Vous en avez sélectionné " + (joueursSelectionnes == null ? 0 : joueursSelectionnes.size()) + ".",
                     4000, Notification.Position.TOP_CENTER)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
             return;
@@ -411,8 +415,8 @@ public class VueEquipe extends BaseLayout {
 
         // Validation du nombre de joueurs selon le tournoi actuel
         int minJoueurs = UserSession.getCurrentTournoiNombreJoueursParEquipe();
-        if (joueursSelectionnes.size() < minJoueurs) {
-            Notification.show("⚠️ ERREUR : Une équipe doit contenir au minimum " + minJoueurs + " joueurs. Vous en avez sélectionné " + joueursSelectionnes.size() + ".",
+        if (joueursSelectionnes == null || joueursSelectionnes.isEmpty() || joueursSelectionnes.size() < minJoueurs) {
+            Notification.show("⚠️ ERREUR : Une équipe doit contenir au minimum " + minJoueurs + " joueurs. Vous en avez sélectionné " + (joueursSelectionnes == null ? 0 : joueursSelectionnes.size()) + ".",
                     4000, Notification.Position.TOP_CENTER)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
             return;
@@ -583,9 +587,51 @@ public class VueEquipe extends BaseLayout {
         List<Joueur> joueurs = new ArrayList<>();
         try (Connection con = ConnectionPool.getConnection()) {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-            String sql = "SELECT id, prenom, nom, age, sexe, taille FROM joueur WHERE tournoi_id=? ORDER BY nom, prenom";
+            // Exclure les joueurs déjà assignés à une équipe
+            String sql = "SELECT id, prenom, nom, age, sexe, taille FROM joueur " +
+                         "WHERE tournoi_id=? AND id NOT IN " +
+                         "(SELECT joueur_id FROM joueur_equipe WHERE tournoi_id=?) " +
+                         "ORDER BY nom, prenom";
             try (PreparedStatement pst = con.prepareStatement(sql)) {
                 pst.setInt(1, tournoiId);
+                pst.setInt(2, tournoiId);
+                try (ResultSet rs = pst.executeQuery()) {
+                    while (rs.next()) {
+                        Joueur joueur = new Joueur(
+                                rs.getInt("id"),
+                                rs.getString("prenom"),
+                                rs.getString("nom"),
+                                rs.getInt("age"),
+                                rs.getString("sexe"),
+                                rs.getDouble("taille")
+                        );
+                        joueurs.add(joueur);
+                    }
+                }
+            }
+            joueursComboBox.setItems(joueurs);
+        } catch (SQLException ex) {
+            Notification.show("Erreur lors du chargement des joueurs : " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+    }
+
+    private void chargerJoueursDisponiblesPourModification(int equipeId) {
+        List<Joueur> joueurs = new ArrayList<>();
+        try (Connection con = ConnectionPool.getConnection()) {
+            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            // Charger les joueurs non assignés OU ceux de l'équipe actuelle
+            String sql = "SELECT id, prenom, nom, age, sexe, taille FROM joueur " +
+                         "WHERE tournoi_id=? AND (id NOT IN " +
+                         "(SELECT joueur_id FROM joueur_equipe WHERE tournoi_id=? AND equipe_id != ?) " +
+                         "OR id IN (SELECT joueur_id FROM joueur_equipe WHERE tournoi_id=? AND equipe_id = ?)) " +
+                         "ORDER BY nom, prenom";
+            try (PreparedStatement pst = con.prepareStatement(sql)) {
+                pst.setInt(1, tournoiId);
+                pst.setInt(2, tournoiId);
+                pst.setInt(3, equipeId);
+                pst.setInt(4, tournoiId);
+                pst.setInt(5, equipeId);
                 try (ResultSet rs = pst.executeQuery()) {
                     while (rs.next()) {
                         Joueur joueur = new Joueur(
