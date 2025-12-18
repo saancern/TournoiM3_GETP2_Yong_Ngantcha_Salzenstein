@@ -878,3 +878,176 @@ vaadin-tab[selected] {
   font-weight: 700;
   font-size: 1.1em;
 }
+/* ===== LIVE MATCH DISPLAY (VuePrincipale) ===== */
+.live-matches-section {
+  background-color: var(--white);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  margin: 2rem auto;
+  max-width: 1200px;
+  width: 100%;
+}
+
+.live-match-display {
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+  border-radius: 12px;
+  padding: 3rem;
+  margin: 2rem 0;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.team-card {
+  background-color: var(--white);
+  border-radius: 10px;
+  padding: 2rem;
+  min-width: 200px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.team-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.team-card-a {
+  border-left: 6px solid var(--secondary-color);
+}
+
+.team-card-b {
+  border-right: 6px solid var(--warning-color);
+}
+
+.team-name {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  text-align: center;
+}
+
+.score-box {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px;
+  padding: 1.5rem;
+  min-width: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.team-score {
+  font-size: 3.5rem;
+  font-weight: 900;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  line-height: 1;
+}
+
+.vs-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  min-width: 150px;
+}
+
+.vs-text {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+}
+
+.score-display {
+  font-size: 4rem;
+  font-weight: 900;
+  color: var(--primary-color);
+  margin: 0;
+  font-family: 'Arial', sans-serif;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.terrain-info {
+  background-color: #e8f4f8;
+  border-left: 4px solid var(--secondary-color);
+  padding: 1rem;
+  border-radius: 6px;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.terrain-label {
+  font-weight: 600;
+  color: var(--primary-color);
+  margin-right: 0.5rem;
+}
+
+.terrain-name {
+  font-size: 1.1rem;
+  color: var(--secondary-color);
+  font-weight: 700;
+}
+
+.match-counter {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  padding: 0.5rem 1rem;
+  background-color: #f0f0f0;
+  border-radius: 20px;
+  min-width: 80px;
+  text-align: center;
+}
+
+.match-title {
+  color: var(--primary-color);
+  font-size: 2rem;
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.user-info-badge {
+  background-color: var(--secondary-color);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+/* Responsive Design for Live Matches */
+@media (max-width: 768px) {
+  .live-match-display {
+    flex-direction: column;
+    padding: 1.5rem;
+  }
+
+  .team-card {
+    min-width: 150px;
+    padding: 1.5rem;
+  }
+
+  .team-name {
+    font-size: 1.3rem;
+  }
+
+  .team-score {
+    font-size: 2.5rem;
+  }
+
+  .score-display {
+    font-size: 2.5rem;
+  }
+
+  .vs-section {
+    min-width: 100px;
+  }
+
+  .live-matches-section {
+    padding: 1rem;
+    margin: 1rem;
+  }
+}
