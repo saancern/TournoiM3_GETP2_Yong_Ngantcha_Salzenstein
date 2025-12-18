@@ -24,7 +24,7 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 import my.insa.yong.model.Parametre;
 import my.insa.yong.model.UserSession;
 import my.insa.yong.utils.database.ConnectionPool;
-import my.insa.yong.webui.VueBut_alle;
+import my.insa.yong.webui.VueClassement;
 import my.insa.yong.webui.VueConnexion;
 import my.insa.yong.webui.VueEquipe;
 import my.insa.yong.webui.VueJoueur;
@@ -144,7 +144,7 @@ public class BaseLayout extends AppLayout {
         }
         
         nav.addItem(new SideNavItem("Matchs", VueMatch.class));
-        nav.addItem(new SideNavItem("Meilleurs Joueurs", VueBut_alle.class));
+        nav.addItem(new SideNavItem("Classement", VueClassement.class));
         
         // Paramètres réservés aux administrateurs
         if (UserSession.adminConnected()) {
