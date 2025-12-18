@@ -11,7 +11,6 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
-import com.vaadin.flow.component.html.Label;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -311,7 +310,6 @@ public class VueBut_alle extends VerticalLayout {
             }
 
         } catch (SQLException ex) {
-            ex.printStackTrace();
         }
 
         currentButeursCache = buteurs;
@@ -361,7 +359,6 @@ public class VueBut_alle extends VerticalLayout {
             }
 
         } catch (SQLException ex) {
-            ex.printStackTrace();
         }
 
         allButeursCache = buteurs;
@@ -412,7 +409,7 @@ public class VueBut_alle extends VerticalLayout {
         col.addClassName("podium-column");
         col.addClassName(columnClass);
 
-        Label lbl = new Label(title);
+        Span lbl = new Span(title);
         lbl.addClassName("podium-title");
         col.add(lbl);
 

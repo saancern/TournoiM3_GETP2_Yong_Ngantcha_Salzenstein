@@ -1,0 +1,350 @@
+% UML Class Diagram - Tournament Management System (Gestion Tournoi)
+% This LaTeX file contains a comprehensive UML class diagram showing the core architecture
+% Usage: Include in your main LaTeX document with: \input{UML_DiagrammeClasses}
+
+\documentclass[12pt]{article}
+\usepackage[utf-8]{inputenc}
+\usepackage[french]{babel}
+\usepackage{tikz}
+\usepackage{tikz-uml}
+\usepackage{geometry}
+\geometry{landscape, margin=0.5cm}
+
+\title{Diagramme de Classes UML - Système de Gestion de Tournois}
+\author{GETP2 - Yong Ngantcha Salzenstein}
+\date{\today}
+
+\begin{document}
+
+\begin{center}
+\begin{tikzpicture}[scale=0.9, every node/.style={anchor=west}]
+
+% ============================================================================
+% BACKEND - MODEL LAYER (Métier / Persistence)
+% ============================================================================
+
+% CLASS: Utilisateur
+\begin{class}[text width=4cm]{Utilisateur}{-8, 14}
+    \attribute{- id: int}
+    \attribute{- surnom: String}
+    \attribute{- pass: String}
+    \attribute{- isAdmin: boolean}
+    \operation{+ getId(): int}
+    \operation{+ getSurnom(): String}
+    \operation{+ isAdmin(): boolean}
+    \operation{+ getRole(): int}
+\end{class}
+
+% CLASS: UserSession (Singleton-like)
+\begin{class}[text width=5cm]{UserSession}{-8, 8}
+    \attribute{- static curUser: Utilisateur}
+    \attribute{- static currentTournoiId: Integer}
+    \attribute{- static currentTournoiName: String}
+    \operation{+ static login(Utilisateur): void}
+    \operation{+ static logout(): void}
+    \operation{+ static userConnected(): boolean}
+    \operation{+ static getCurrentTournoiId(): Optional<Integer>}
+    \operation{+ static setCurrentTournoi(id, name): void}
+\end{class}
+
+% CLASS: Parametre (Tournament Settings)
+\begin{class}[text width=4.5cm]{Parametre}{3, 14}
+    \attribute{- id: int}
+    \attribute{- nomTournoi: String}
+    \attribute{- sport: String}
+    \attribute{- nombreTerrains: int}
+    \attribute{- nombreJoueursParEquipe: int}
+    \operation{+ getId(): int}
+    \operation{+ getNomTournoi(): String}
+    \operation{+ getSport(): String}
+    \operation{+ saveInDB(Connection): int}
+\end{class}
+
+% CLASS: ClasseMiroir (Abstract Base for DB Entities)
+\begin{class}[text width=5cm]{«abstract» ClasseMiroir}{3, 8}
+    \attribute{- id: int}
+    \operation{+ getId(): int}
+    \operation{+ setId(int): void}
+    \operation{# abstract saveSansId(Connection): Statement}
+    \operation{+ saveInDB(Connection): int}
+    \operation{+ loadFromDB(Connection, int): void}
+\end{class}
+
+% CLASS: Joueur
+\begin{class}[text width=4.5cm]{Joueur}{-2, 3}
+    \attribute{- prenom: String}
+    \attribute{- nom: String}
+    \attribute{- age: int}
+    \attribute{- sexe: String}
+    \attribute{- taille: double}
+    \operation{+ getPrenom(): String}
+    \operation{+ getNom(): String}
+    \operation{+ getAge(): int}
+\end{class}
+
+% CLASS: Equipe
+\begin{class}[text width=4.5cm]{Equipe}{3, 3}
+    \attribute{- nomEquipe: String}
+    \attribute{- dateCreation: LocalDate}
+    \attribute{- joueurs: List<Joueur>}
+    \operation{+ getNomEquipe(): String}
+    \operation{+ getJoueurs(): List<Joueur>}
+    \operation{+ addJoueur(Joueur): void}
+\end{class}
+
+% CLASS: Terrain
+\begin{class}[text width=4.5cm]{Terrain}{8, 3}
+    \attribute{- nomTerrain: String}
+    \attribute{- numero: int}
+    \operation{+ getNomTerrain(): String}
+    \operation{+ getNumero(): int}
+    \operation{+ toString(): String}
+\end{class}
+
+% CLASS: GestionMatchs (Service Layer)
+\begin{class}[text width=5.5cm]{GestionMatchs}{-8, 1}
+    \attribute{- static MatchRow: record}
+    \attribute{- static ButeurRow: record}
+    \operation{+ static creerRencontres(): void}
+    \operation{+ static calculerScores(): void}
+    \operation{+ static getClassement(): List<ClassementRow>}
+    \operation{+ static enregistrerBut(): void}
+\end{class}
+
+% CLASS: ConnectionPool (Database Access)
+\begin{class}[text width=5cm]{ConnectionPool}{3, -2}
+    \attribute{- static dataSource: HikariDataSource}
+    \attribute{- static dbUrl: String}
+    \operation{+ static init(): void}
+    \operation{+ static getConnection(): Connection}
+    \operation{+ static close(): void}
+\end{class}
+
+% ============================================================================
+% FRONTEND LAYER (Vaadin Views)
+% ============================================================================
+
+% CLASS: BaseLayout (Navigation Container)
+\begin{class}[text width=5cm]{BaseLayout}{-8, -4}
+    \attribute{- gridCurrentTournoi: Grid}
+    \attribute{- contentLayout: VerticalLayout}
+    \operation{- createHeader(): void}
+    \operation{- createDrawer(): void}
+    \operation{- logout(): void}
+    \operation{- switchTournament(): void}
+\end{class}
+
+% CLASS: VuePrincipale (Home)
+\begin{class}[text width=4.5cm]{VuePrincipale}{-2, -4}
+    \attribute{- container: VerticalLayout}
+    \operation{+ construireInterfaceConnectee(): void}
+    \operation{+ construireInterfaceNonConnectee(): void}
+\end{class}
+
+% CLASS: VueConnexion (Login/SignUp)
+\begin{class}[text width=4.5cm]{VueConnexion}{3, -4}
+    \attribute{- tfUsername: TextField}
+    \attribute{- pfPassword: PasswordField}
+    \operation{- gererConnexion(): void}
+    \operation{- gererInscription(): void}
+\end{class}
+
+% CLASS: VueJoueur (Player Management)
+\begin{class}[text width=4.5cm]{VueJoueur}{8, -4}
+    \attribute{- grid: Grid<Joueur>}
+    \attribute{- dialogForm: Dialog}
+    \operation{- chargerJoueurs(): void}
+    \operation{- ajouterJoueur(): void}
+    \operation{- supprimerJoueur(): void}
+\end{class}
+
+% CLASS: VueEquipe (Team Management)
+\begin{class}[text width=4.5cm]{VueEquipe}{-2, -8}
+    \attribute{- grid: Grid<Equipe>}
+    \attribute{- joueursList: List<Joueur>}
+    \operation{- chargerEquipes(): void}
+    \operation{- associerJoueurs(): void}
+\end{class}
+
+% CLASS: VueMatch (Match Management)
+\begin{class}[text width=4.5cm]{VueMatch}{3, -8}
+    \attribute{- gridRencontres: Grid}
+    \attribute{- gridScores: Grid}
+    \operation{- chargerMatchs(): void}
+    \operation{- enregistrerScore(): void}
+\end{class}
+
+% CLASS: VueBut_alle (Scoring Board)
+\begin{class}[text width=5cm]{VueBut_alle}{8, -8}
+    \attribute{- gridCurrentTournoi: Grid}
+    \attribute{- gridAllTournois: Grid}
+    \operation{- loadButeurs(): void}
+    \operation{- buildPodium(): HorizontalLayout}
+\end{class}
+
+% ============================================================================
+% DATABASE LAYER (Conceptual)
+% ============================================================================
+
+% DATABASE ICON
+\node[draw, rectangle, fill=cyan!20, text width=8cm, minimum height=1.5cm] at (3, -11.5) {
+    \textbf{Base de Données Relationnelle} \\
+    Tables: \texttt{utilisateur, parametre, joueur, equipe, terrain, rencontre, but}
+};
+
+% ============================================================================
+% RELATIONSHIPS / ASSOCIATIONS
+% ============================================================================
+
+% UserSession uses Utilisateur
+\draw [->, dashed, line width=1.5pt] (-2, 8) -- (1, 14);
+\node[text, font=\tiny] at (0, 11) {\textbf{0..1}};
+
+% Parametre inherits from ClasseMiroir
+\draw [->, line width=1.5pt] (5.5, 8) -- (6, 12);
+\node[text, font=\tiny] at (6.5, 10) {\textbf{inherits}};
+
+% Joueur inherits from ClasseMiroir
+\draw [->, line width=1.5pt] (2.5, 8) -- (0.5, 3);
+\node[text, font=\tiny] at (1, 5.5) {\textbf{inherits}};
+
+% Equipe inherits from ClasseMiroir
+\draw [->, line width=1.5pt] (4.5, 8) -- (5.5, 3);
+\node[text, font=\tiny] at (5.5, 5.5) {\textbf{inherits}};
+
+% Terrain inherits from ClasseMiroir
+\draw [->, line width=1.5pt] (6.5, 8) -- (10, 3);
+\node[text, font=\tiny] at (8.5, 5.5) {\textbf{inherits}};
+
+% Equipe contains Joueurs
+\draw [->, line width=1.5pt] (3, 3) -- (2, 3);
+\node[text, font=\tiny] at (2.5, 2.5) {\textbf{0..*}};
+\node[text, font=\tiny] at (2.5, 3.3) {\textbf{contient}};
+
+% GestionMatchs uses Joueur, Equipe, Terrain
+\draw [->, dashed, line width=1pt] (-5, 1) -- (-1, 3);
+\draw [->, dashed, line width=1pt] (-4, 1) -- (2, 3);
+\draw [->, dashed, line width=1pt] (-3, 1) -- (8, 3);
+
+% BaseLayout extends AppLayout (Vaadin)
+\node[text, font=\tiny] at (-6, -4.5) {\textbf{extends AppLayout}};
+
+% VuePrincipale extends BaseLayout
+\draw [->, line width=1.5pt] (-2, -4) -- (-6.5, -4);
+\node[text, font=\tiny] at (-4, -3.7) {\textbf{extends}};
+
+% VueConnexion uses Utilisateur
+\draw [->, dashed, line width=1pt] (4, -4) -- (0, 14);
+
+% VueJoueur extends BaseLayout
+\draw [->, line width=1.5pt] (8.5, -4) -- (-6, -4);
+\node[text, font=\tiny] at (2, -3.7) {\textbf{extends}};
+
+% VueJoueur uses Joueur
+\draw [->, dashed, line width=1pt] (8.5, -4) -- (1, 3);
+
+% VueEquipe extends BaseLayout
+\draw [->, line width=1.5pt] (-2, -8) -- (-6, -4.5);
+\node[text, font=\tiny] at (-4, -6) {\textbf{extends}};
+
+% VueEquipe uses Equipe, Joueur
+\draw [->, dashed, line width=1pt] (-1, -8) -- (3, 3);
+\draw [->, dashed, line width=1pt] (-1.5, -8) -- (-0.5, 3);
+
+% VueMatch extends BaseLayout
+\draw [->, line width=1.5pt] (3, -8) -- (-6, -4.5);
+\node[text, font=\tiny] at (-1, -6) {\textbf{extends}};
+
+% VueMatch uses GestionMatchs
+\draw [->, dashed, line width=1pt] (3, -8) -- (-5, 1);
+
+% VueBut_alle extends BaseLayout
+\draw [->, line width=1.5pt] (8.5, -8) -- (-6, -4.5);
+\node[text, font=\tiny] at (2, -6) {\textbf{extends}};
+
+% All Views access Database through ConnectionPool
+\draw [->, dashed, line width=1pt, color=red] (6, -2) -- (6, -2.5);
+\node[text, font=\tiny, color=red] at (6.5, -1.5) {\textbf{SQL}};
+
+% ============================================================================
+% LEGEND
+% ============================================================================
+
+\node[draw, rectangle, fill=gray!10, text width=18cm, minimum height=2cm] at (6, -13.5) {
+    \textbf{Légende:} \\
+    \textbf{→} Héritage / Extension \quad \textbf{⇢} Association/Utilisation \quad \textbf{- - →} Dépendance/Accès \\
+    \textbf{Couches:} Backend (Model/Métier) = Classes jaunes | Frontend (Vaadin Views) = Classes bleues | DB Accès = Classes vertes
+};
+
+\end{tikzpicture}
+\end{center}
+
+\newpage
+
+% ============================================================================
+% DETAILED DESCRIPTIONS
+% ============================================================================
+
+\section*{Description Détaillée de l'Architecture}
+
+\subsection*{1. Couche Métier (Backend Model)}
+
+\begin{description}
+    \item[\textbf{Utilisateur}] Représente un utilisateur du système avec ses droits (admin/user). 
+        Stocké en base de données avec chiffrement du mot de passe.
+    
+    \item[\textbf{UserSession}] Gestionnaire de session singleton. Maintient l'état actuel de l'utilisateur 
+        connecté et du tournoi sélectionné. Gère la transition login/logout.
+    
+    \item[\textbf{Parametre}] Définit les paramètres d'un tournoi (nom, sport, nombre de terrains, 
+        joueurs par équipe). Hérite de \texttt{ClasseMiroir} pour la persistance.
+    
+    \item[\textbf{Joueur}] Entité représentant un joueur avec attributs (prénom, nom, âge, taille, sexe).
+        Liée au tournoi via \texttt{tournoi\_id}.
+    
+    \item[\textbf{Equipe}] Groupe de joueurs avec date de création. Contient une collection de \texttt{Joueur}.
+    
+    \item[\textbf{Terrain}] Ressource physique pour les matchs (numéro, nom).
+    
+    \item[\textbf{ClasseMiroir}] Classe abstraite de base pour toutes les entités persistantes.
+        Gère l'ID auto-généré et les opérations CRUD standard.
+    
+    \item[\textbf{GestionMatchs}] Service métier pour la création et gestion des rencontres.
+        Utilise des DTOs internes (\texttt{MatchRow}, \texttt{ButeurRow}) pour les requêtes complexes.
+\end{description}
+
+\subsection*{2. Couche Données (Database Access)}
+
+\begin{description}
+    \item[\textbf{ConnectionPool}] Gestionnaire de connexions utilisant HikariCP. 
+        Fournit des connexions réutilisables pour optimiser les performances.
+    
+    \item[\textbf{Schéma Unifié}] Une seule base de données avec colonne \texttt{tournoi\_id} 
+        pour isoler les données par tournoi (pas de tables par tournoi).
+\end{description}
+
+\subsection*{3. Couche Présentation (Vaadin Frontend)}
+
+\begin{description}
+    \item[\textbf{BaseLayout}] Container racine hérité par toutes les vues. Fournit le header 
+        (navigation, utilisateur, déconnexion) et le drawer (menu latéral).
+    
+    \item[\textbf{VuePrincipale}] Accueil avec interface différente selon l'état de connexion.
+    
+    \item[\textbf{VueConnexion}] Formulaire de connexion/inscription avec validation.
+    
+    \item[\textbf{VueJoueur, VueEquipe, VueTerrain, VueMatch, VueBut\_alle}] 
+        Vues spécialisées pour la gestion des entités. Chacune étend \texttt{BaseLayout} 
+        et accède aux données via \texttt{ConnectionPool}.
+\end{description}
+
+\subsection*{4. Flux d'Accès Aux Données}
+
+\begin{enumerate}
+    \item \textbf{Frontend} (Vaadin) appelle une méthode métier sur une classe \texttt{ClasseMiroir}
+    \item \textbf{ClasseMiroir} obtient une connexion via \texttt{ConnectionPool.getConnection()}
+    \item Exécution de la requête SQL avec filtrage par \texttt{UserSession.getCurrentTournoiId()}
+    \item Résultat mappé en objets Java et renvoyé au Frontend
+\end{enumerate}
+
+\end{document}

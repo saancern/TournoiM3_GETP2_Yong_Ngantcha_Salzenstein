@@ -25,6 +25,7 @@ import my.insa.yong.model.Parametre;
 import my.insa.yong.model.UserSession;
 import my.insa.yong.utils.database.ConnectionPool;
 import my.insa.yong.webui.VueBut_alle;
+import my.insa.yong.webui.VueConnexion;
 import my.insa.yong.webui.VueEquipe;
 import my.insa.yong.webui.VueJoueur;
 import my.insa.yong.webui.VueJoueur_alle;
@@ -83,10 +84,12 @@ public class BaseLayout extends AppLayout {
             userInfo.addClassNames(LumoUtility.FontWeight.MEDIUM);
             
             // Bouton de déconnexion
-            Button logoutBtn = new Button("Déconnexion", e -> {
+            Button logoutBtn = new Button("Déconnexion");
+            logoutBtn.addClickListener(e -> {
                 UserSession.logout();
                 UserSession.clearCurrentTournoi(); // Effacer aussi le tournoi actuel
-                getUI().ifPresent(ui -> ui.getPage().reload());
+                // Naviguer vers la page de connexion
+                getUI().ifPresent(ui -> ui.navigate(VueConnexion.class));
             });
             logoutBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
             
@@ -258,7 +261,6 @@ public class BaseLayout extends AppLayout {
             
         } catch (SQLException ex) {
             System.err.println("Error loading tournaments: " + ex.getMessage());
-            ex.printStackTrace();
             Notification.show("Erreur lors du chargement des tournois", 3000, Notification.Position.MIDDLE);
             return new ArrayList<>();
         }
@@ -301,7 +303,6 @@ public class BaseLayout extends AppLayout {
             
         } catch (Exception e) {
             System.err.println("Error switching tournament: " + e.getMessage());
-            e.printStackTrace();
             Notification.show("Erreur lors du changement de tournoi", 3000, Notification.Position.MIDDLE);
         }
     }

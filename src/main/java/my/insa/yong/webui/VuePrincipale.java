@@ -95,8 +95,9 @@ public class VuePrincipale extends BaseLayout {
         boutonChangerUtilisateur.addClickListener(e -> {
             // Déconnecter l'utilisateur actuel
             UserSession.logout();
-            // Rafraîchir la page pour afficher l'interface de connexion
-            getUI().ifPresent(ui -> ui.getPage().reload());
+            UserSession.clearCurrentTournoi();
+            // Naviguer vers la page de connexion
+            getUI().ifPresent(ui -> ui.navigate(VueConnexion.class));
         });
 
         // Layout pour les boutons

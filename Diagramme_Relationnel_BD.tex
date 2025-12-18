@@ -1,0 +1,484 @@
+% Diagramme Relationnel (ER Diagram) - Système de Gestion de Tournois
+% Base de Données Complète avec Toutes les Entités et Leurs Relations
+% Usage: \input{Diagramme_Relationnel_BD}
+
+\documentclass[12pt, landscape]{article}
+\usepackage[utf-8]{inputenc}
+\usepackage[french]{babel}
+\usepackage{tikz}
+\usepackage{geometry}
+\geometry{landscape, margin=0.8cm}
+
+\pagestyle{empty}
+
+\title{Diagramme Relationnel (ER) - Base de Données Tournoi}
+\author{GETP2 - Yong Ngantcha Salzenstein}
+\date{\today}
+
+\begin{document}
+
+\section*{Diagramme Entité-Relation (ER) - Schéma de Base de Données}
+
+\begin{center}
+\begin{tikzpicture}[
+    entity/.style={rectangle, draw=black, thick, minimum width=3.5cm, minimum height=1.8cm, fill=yellow!20},
+    associative/.style={diamond, draw=black, thick, minimum width=2.5cm, minimum height=1.5cm, fill=orange!20},
+    junction/.style={rectangle, draw=black, thick, minimum width=3.5cm, minimum height=1.8cm, fill=lightblue!20},
+    key/.style={font=\textbf\underline},
+    attribute/.style={font=\small},
+    relationship/.style={->, thick, draw=black},
+    many/.style={thick, draw=red},
+    scale=1.0
+]
+
+% ============================================================================
+% TABLE: UTILISATEUR (No dependencies)
+% ============================================================================
+\node[entity] (utilisateur) at (0, 12) {
+    \begin{tabular}{l}
+        \textbf{UTILISATEUR} \\
+        \hline
+        \key{id} : INT \\
+        surnom : VARCHAR(30) \\
+        pass : VARCHAR(20) \\
+        isAdmin : BOOLEAN
+    \end{tabular}
+};
+
+% ============================================================================
+% TABLE: TOURNOI (Central reference table - No dependencies)
+% ============================================================================
+\node[entity] (tournoi) at (8, 12) {
+    \begin{tabular}{l}
+        \textbf{TOURNOI} \\
+        \hline
+        \key{id} : INT \\
+        nom\_tournoi : VARCHAR(255) \\
+        sport : VARCHAR(100) \\
+        nombre\_terrains : INT \\
+        nombre\_joueurs\_par\_equipe : INT
+    \end{tabular}
+};
+
+% ============================================================================
+% TABLE: JOUEUR (Tournament-dependent)
+% ============================================================================
+\node[entity] (joueur) at (-5, 8) {
+    \begin{tabular}{l}
+        \textbf{JOUEUR} \\
+        \hline
+        \key{id} : INT \\
+        prenom : VARCHAR(50) \\
+        nom : VARCHAR(50) \\
+        taille : DOUBLE \\
+        age : INT \\
+        sexe : CHAR(1) \\
+        tournoi\_id : INT \textit{(FK)}
+    \end{tabular}
+};
+
+% ============================================================================
+% TABLE: EQUIPE (Tournament-dependent)
+% ============================================================================
+\node[entity] (equipe) at (3, 8) {
+    \begin{tabular}{l}
+        \textbf{EQUIPE} \\
+        \hline
+        \key{id} : INT \\
+        nom\_equipe : VARCHAR(50) \\
+        date\_creation : DATE \\
+        tournoi\_id : INT \textit{(FK)}
+    \end{tabular}
+};
+
+% ============================================================================
+% TABLE: TERRAIN (Tournament-dependent)
+% ============================================================================
+\node[entity] (terrain) at (11, 8) {
+    \begin{tabular}{l}
+        \textbf{TERRAIN} \\
+        \hline
+        \key{id} : INT \\
+        nom\_terrain : VARCHAR(100) \\
+        numero : INT \\
+        tournoi\_id : INT \textit{(FK)}
+    \end{tabular}
+};
+
+% ============================================================================
+% JUNCTION TABLE: JOUEUR_EQUIPE (N:N Association)
+% ============================================================================
+\node[junction] (joueur_equipe) at (-1, 3.5) {
+    \begin{tabular}{l}
+        \textbf{JOUEUR\_EQUIPE} \\
+        \hline
+        \key{joueur\_id} : INT (FK) \\
+        \key{equipe\_id} : INT (FK) \\
+        \key{tournoi\_id} : INT (FK) \\
+        \small{\textit{(PK composite)}}
+    \end{tabular}
+};
+
+% ============================================================================
+% TABLE: RENCONTRE (Match/Tournament-dependent)
+% ============================================================================
+\node[entity] (rencontre) at (3, 3.5) {
+    \begin{tabular}{l}
+        \textbf{RENCONTRE} \\
+        \hline
+        \key{id} : INT \\
+        tournoi\_id : INT \textit{(FK)} \\
+        round\_number : INT \\
+        pool\_index : INT \\
+        equipe\_a\_id : INT \textit{(FK)} \\
+        equipe\_b\_id : INT \textit{(FK)} \\
+        score\_a : INT \\
+        score\_b : INT \\
+        winner\_id : INT \textit{(FK)} \\
+        played : BOOLEAN
+    \end{tabular}
+};
+
+% ============================================================================
+% TABLE: BUT (Goal scorer - Tournament-dependent)
+% ============================================================================
+\node[entity] (but) at (9, 3.5) {
+    \begin{tabular}{l}
+        \textbf{BUT} \\
+        \hline
+        \key{id} : INT \\
+        rencontre\_id : INT \textit{(FK)} \\
+        equipe\_id : INT \textit{(FK)} \\
+        joueur\_id : INT \textit{(FK)} \\
+        minute : INT \\
+        tournoi\_id : INT \textit{(FK)}
+    \end{tabular}
+};
+
+% ============================================================================
+% JUNCTION TABLE: TERRAIN_RENCONTRE (N:N Association)
+% ============================================================================
+\node[junction] (terrain_rencontre) at (7, -0.5) {
+    \begin{tabular}{l}
+        \textbf{TERRAIN\_RENCONTRE} \\
+        \hline
+        \key{terrain\_id} : INT (FK) \\
+        \key{rencontre\_id} : INT (FK) \\
+        \key{tournoi\_id} : INT (FK) \\
+        \small{\textit{(PK composite)}}
+    \end{tabular}
+};
+
+% ============================================================================
+% RELATIONSHIPS / FOREIGN KEYS
+% ============================================================================
+
+% TOURNOI → JOUEUR
+\draw[relationship, color=blue] (8, 11.5) -- (-5, 8.8);
+\node[text, font=\small, color=blue] at (2, 10) {\textbf{1:N}};
+\node[text, font=\small, color=blue] at (2, 9.5) {possède};
+
+% TOURNOI → EQUIPE
+\draw[relationship, color=blue] (8, 11.5) -- (3, 8.8);
+\node[text, font=\small, color=blue] at (6, 10) {\textbf{1:N}};
+\node[text, font=\small, color=blue] at (6, 9.5) {organise};
+
+% TOURNOI → TERRAIN
+\draw[relationship, color=blue] (8, 11.5) -- (11, 8.8);
+\node[text, font=\small, color=blue] at (10, 10) {\textbf{1:N}};
+\node[text, font=\small, color=blue] at (10, 9.5) {dispose};
+
+% TOURNOI → RENCONTRE
+\draw[relationship, color=blue] (8, 11.5) -- (3, 4.3);
+\node[text, font=\small, color=blue] at (6, 8) {\textbf{1:N}};
+\node[text, font=\small, color=blue] at (6, 7.5) {planifie};
+
+% TOURNOI → BUT
+\draw[relationship, color=blue] (8, 11.5) -- (9, 4.3);
+\node[text, font=\small, color=blue] at (8.5, 8) {\textbf{1:N}};
+\node[text, font=\small, color=blue] at (8.5, 7.5) {enregistre};
+
+% TOURNOI → JOUEUR_EQUIPE
+\draw[relationship, color=blue] (8, 11.5) -- (-1, 4.3);
+\node[text, font=\small, color=blue] at (4, 8) {\textbf{1:N}};
+
+% JOUEUR → JOUEUR_EQUIPE
+\draw[relationship, color=green] (-5, 7.1) -- (-2, 4.3);
+\node[text, font=\small, color=green] at (-4, 5.5) {\textbf{1:N}};
+\node[text, font=\small, color=green] at (-4, 5) {appartient};
+
+% EQUIPE → JOUEUR_EQUIPE
+\draw[relationship, color=green] (3, 7.1) -- (0, 4.3);
+\node[text, font=\small, color=green] at (2, 5.5) {\textbf{1:N}};
+\node[text, font=\small, color=green] at (2, 5) {recrute};
+
+% EQUIPE → RENCONTRE (equipe_a)
+\draw[relationship, color=purple] (3, 7.1) -- (2.5, 4.3);
+\node[text, font=\small, color=purple] at (2, 6) {\textbf{1:N}};
+\node[text, font=\small, color=purple] at (2, 5.5) {joue A};
+
+% EQUIPE → RENCONTRE (equipe_b)
+\draw[relationship, color=purple] (3.5, 7.1) -- (3.5, 4.3);
+\node[text, font=\small, color=purple] at (4, 6) {\textbf{1:N}};
+\node[text, font=\small, color=purple] at (4, 5.5) {joue B};
+
+% EQUIPE → RENCONTRE (winner)
+\draw[relationship, color=purple] (4, 7.1) -- (4.5, 4.3);
+\node[text, font=\small, color=purple] at (4.5, 6) {\textbf{0..1:N}};
+\node[text, font=\small, color=purple] at (4.5, 5.5) {gagne};
+
+% RENCONTRE → BUT
+\draw[relationship, color=brown] (5, 3.8) -- (8, 3.8);
+\node[text, font=\small, color=brown] at (6.5, 3.5) {\textbf{1:N}};
+\node[text, font=\small, color=brown] at (6.5, 3.1) {contient};
+
+% EQUIPE → BUT
+\draw[relationship, color=brown] (3.8, 7.1) -- (8.5, 4.3);
+\node[text, font=\small, color=brown] at (6, 5.5) {\textbf{1:N}};
+\node[text, font=\small, color=brown] at (6, 5) {marque};
+
+% JOUEUR → BUT
+\draw[relationship, color=brown] (-5, 7.1) -- (8, 4.3);
+\node[text, font=\small, color=brown] at (1, 5.5) {\textbf{1:N}};
+\node[text, font=\small, color=brown] at (1, 5) {inscrit};
+
+% TERRAIN → TERRAIN_RENCONTRE
+\draw[relationship, color=teal] (11, 7.1) -- (8, 0.3);
+\node[text, font=\small, color=teal] at (9.5, 3.5) {\textbf{1:N}};
+\node[text, font=\small, color=teal] at (9.5, 3) {accueille};
+
+% RENCONTRE → TERRAIN_RENCONTRE
+\draw[relationship, color=teal] (3, 2.6) -- (6, 0.3);
+\node[text, font=\small, color=teal] at (4.5, 1.5) {\textbf{1:N}};
+\node[text, font=\small, color=teal] at (4.5, 1) {se joue sur};
+
+% ============================================================================
+% LEGEND
+% ============================================================================
+
+\node[draw, rectangle, fill=gray!10, text width=25cm, minimum height=2.5cm] at (5, -3.2) {
+    \textbf{\Large Légende et Spécifications:} \\[0.2cm]
+    \textbf{Types de Colonnes:} 
+    $\underline{\textbf{id}}$ = Clé Primaire (PK) | \textit{(FK)} = Clé Étrangère | \textbf{1:N} = Relation Un-à-Plusieurs | \textbf{N:N} = Relation Plusieurs-à-Plusieurs (via tables de jonction) \\[0.2cm]
+    \textbf{Isolation par Tournoi:} Chaque table contient \texttt{tournoi\_id} pour isoler complètement les données de chaque tournoi. \\
+    \textbf{Contraintes:} ON DELETE CASCADE appliquées pour maintenir l'intégrité référentielle lors de la suppression d'un tournoi.
+};
+
+\end{tikzpicture}
+\end{center}
+
+\newpage
+
+% ============================================================================
+% DESCRIPTION DÉTAILLÉE DES TABLES
+% ============================================================================
+
+\section*{Description Détaillée du Schéma Relationnel}
+
+\subsection*{📋 Entités Principales (Jaune)}
+
+\subsubsection*{1. UTILISATEUR}
+\begin{description}
+    \item[Rôle] Authentification et gestion des utilisateurs du système
+    \item[Clé Primaire] \texttt{id}
+    \item[Attributs clés]
+    \begin{itemize}
+        \item \texttt{surnom} : Unique, utilisé pour la connexion
+        \item \texttt{pass} : Mot de passe (à chiffrer en production)
+        \item \texttt{isAdmin} : Boolean déterminant les droits d'accès
+    \end{itemize}
+    \item[Dépendances] Aucune — entité racine
+    \item[Contraintes] UNIQUE(surnom), NOT NULL sur tous les champs
+\end{description}
+
+\subsubsection*{2. TOURNOI}
+\begin{description}
+    \item[Rôle] Centre des données — chaque tournoi isole ses propres ressources
+    \item[Clé Primaire] \texttt{id}
+    \item[Attributs clés]
+    \begin{itemize}
+        \item \texttt{nom\_tournoi} : Nom du tournoi (ex: "Championnat M3 2025")
+        \item \texttt{sport} : Type de sport (ex: "Football", "Volleyball")
+        \item \texttt{nombre\_terrains} : Quantité de terrains disponibles
+        \item \texttt{nombre\_joueurs\_par\_equipe} : Règle de composition d'équipe
+    \end{itemize}
+    \item[Dépendances] Aucune — entité racine
+    \item[Relations] 1:N vers JOUEUR, EQUIPE, TERRAIN, RENCONTRE, BUT
+    \item[Contraintes] NOT NULL sur tous les champs
+\end{description}
+
+\subsubsection*{3. JOUEUR}
+\begin{description}
+    \item[Rôle] Représente un participant au tournoi
+    \item[Clé Primaire] \texttt{id}
+    \item[Clé Étrangère] \texttt{tournoi\_id} $\rightarrow$ TOURNOI(id)
+    \item[Attributs clés]
+    \begin{itemize}
+        \item \texttt{prenom}, \texttt{nom} : Identité du joueur
+        \item \texttt{age} : Âge du joueur
+        \item \texttt{taille} : DOUBLE (en mètres, ex: 1.85)
+        \item \texttt{sexe} : CHAR(1) — CHECK('F' ou 'H')
+    \end{itemize}
+    \item[Relations]
+    \begin{itemize}
+        \item N:N avec EQUIPE via JOUEUR\_EQUIPE
+        \item 1:N vers BUT (enregistre les buts marqués)
+    \end{itemize}
+    \item[Contraintes] ON DELETE CASCADE via tournoi\_id
+\end{description}
+
+\subsubsection*{4. EQUIPE}
+\begin{description}
+    \item[Rôle] Groupe de joueurs participant au tournoi
+    \item[Clé Primaire] \texttt{id}
+    \item[Clé Étrangère] \texttt{tournoi\_id} $\rightarrow$ TOURNOI(id)
+    \item[Attributs clés]
+    \begin{itemize}
+        \item \texttt{nom\_equipe} : Nom de l'équipe (unique par tournoi)
+        \item \texttt{date\_creation} : DATE de constitution de l'équipe
+    \end{itemize}
+    \item[Relations]
+    \begin{itemize}
+        \item N:N avec JOUEUR via JOUEUR\_EQUIPE
+        \item 1:N vers RENCONTRE (role: equipe\_a, equipe\_b, winner)
+        \item 1:N vers BUT
+    \end{itemize}
+    \item[Contraintes] ON DELETE CASCADE via tournoi\_id
+\end{description}
+
+\subsubsection*{5. TERRAIN}
+\begin{description}
+    \item[Rôle] Ressource physique pour l'accueil des rencontres
+    \item[Clé Primaire] \texttt{id}
+    \item[Clé Étrangère] \texttt{tournoi\_id} $\rightarrow$ TOURNOI(id)
+    \item[Attributs clés]
+    \begin{itemize}
+        \item \texttt{nom\_terrain} : Descriptif (ex: "Central", "Annexe 1")
+        \item \texttt{numero} : Identifiant numérique du terrain
+    \end{itemize}
+    \item[Relations] N:N avec RENCONTRE via TERRAIN\_RENCONTRE
+    \item[Contraintes] ON DELETE CASCADE via tournoi\_id
+\end{description}
+
+\subsection*{🔗 Entités de Jonction (Bleu ciel)}
+
+\subsubsection*{6. JOUEUR\_EQUIPE}
+\begin{description}
+    \item[Rôle] Relation N:N entre JOUEUR et EQUIPE
+    \item[Clé Primaire Composite] (\texttt{joueur\_id}, \texttt{equipe\_id}, \texttt{tournoi\_id})
+    \item[Clés Étrangères]
+    \begin{itemize}
+        \item \texttt{joueur\_id} $\rightarrow$ JOUEUR(id)
+        \item \texttt{equipe\_id} $\rightarrow$ EQUIPE(id)
+        \item \texttt{tournoi\_id} $\rightarrow$ TOURNOI(id)
+    \end{itemize}
+    \item[Signification] "Le joueur X appartient à l'équipe Y dans le tournoi Z"
+    \item[Contraintes] ON DELETE CASCADE sur tous les FK
+\end{description}
+
+\subsubsection*{7. TERRAIN\_RENCONTRE}
+\begin{description}
+    \item[Rôle] Relation N:N entre TERRAIN et RENCONTRE
+    \item[Clé Primaire Composite] (\texttt{terrain\_id}, \texttt{rencontre\_id}, \texttt{tournoi\_id})
+    \item[Clés Étrangères]
+    \begin{itemize}
+        \item \texttt{terrain\_id} $\rightarrow$ TERRAIN(id)
+        \item \texttt{rencontre\_id} $\rightarrow$ RENCONTRE(id)
+        \item \texttt{tournoi\_id} $\rightarrow$ TOURNOI(id)
+    \end{itemize}
+    \item[Signification] "La rencontre X se joue sur le terrain Y pendant le tournoi Z"
+    \item[Contraintes] ON DELETE CASCADE sur tous les FK
+\end{description}
+
+\subsection*{📊 Entités Métier (Jaune)}
+
+\subsubsection*{8. RENCONTRE (Match)}
+\begin{description}
+    \item[Rôle] Représente un match/une rencontre entre deux équipes
+    \item[Clé Primaire] \texttt{id}
+    \item[Clés Étrangères]
+    \begin{itemize}
+        \item \texttt{tournoi\_id} $\rightarrow$ TOURNOI(id)
+        \item \texttt{equipe\_a\_id} $\rightarrow$ EQUIPE(id)
+        \item \texttt{equipe\_b\_id} $\rightarrow$ EQUIPE(id) [NULLABLE]
+        \item \texttt{winner\_id} $\rightarrow$ EQUIPE(id) [NULLABLE, ON DELETE SET NULL]
+    \end{itemize}
+    \item[Attributs clés]
+    \begin{itemize}
+        \item \texttt{round\_number} : Numéro du tour (1, 2, finale...)
+        \item \texttt{pool\_index} : Index du groupe/poule [NULLABLE]
+        \item \texttt{score\_a}, \texttt{score\_b} : Scores [NULLABLE jusqu'à la rencontre jouée]
+        \item \texttt{played} : BOOLEAN indiquant si la rencontre s'est déroulée
+    \end{itemize}
+    \item[Relations]
+    \begin{itemize}
+        \item N:N avec TERRAIN via TERRAIN\_RENCONTRE
+        \item 1:N vers BUT
+    \end{itemize}
+    \item[Contraintes] ON DELETE CASCADE via tournoi\_id, \texttt{equipe\_b\_id} peut être NULL pour les matchs prévus seuls
+\end{description}
+
+\subsubsection*{9. BUT (Goal)}
+\begin{description}
+    \item[Rôle] Enregistre chaque but marqué lors d'une rencontre
+    \item[Clé Primaire] \texttt{id}
+    \item[Clés Étrangères]
+    \begin{itemize}
+        \item \texttt{rencontre\_id} $\rightarrow$ RENCONTRE(id)
+        \item \texttt{equipe\_id} $\rightarrow$ EQUIPE(id)
+        \item \texttt{joueur\_id} $\rightarrow$ JOUEUR(id)
+        \item \texttt{tournoi\_id} $\rightarrow$ TOURNOI(id)
+    \end{itemize}
+    \item[Attributs clés]
+    \begin{itemize}
+        \item \texttt{minute} : Minute du but marqué [NULLABLE]
+    \end{itemize}
+    \item[Signification] "Le joueur X de l'équipe Y a marqué un but à la minute Z de la rencontre W"
+    \item[Contraintes] ON DELETE CASCADE sur tous les FK
+\end{description}
+
+\subsection*{🎯 Patterns de Conception Appliqués}
+
+\subsubsection*{Isolation par Tournoi}
+\textbf{Approche:} Chaque table possède une colonne \texttt{tournoi\_id} qui agit comme clé de partitionnement logique.
+\begin{itemize}
+    \item \textbf{Avantages:} ✅ Un seul schéma pour tous les tournois | ✅ Pas de création/suppression dynamique de tables | ✅ Requêtes uniformes
+    \item \textbf{Implémentation:} Toute requête inclut un filtre \texttt{WHERE tournoi\_id = ?}
+    \item \textbf{Exemple:} \texttt{SELECT * FROM joueur WHERE tournoi\_id = 1 AND id = 42}
+\end{itemize}
+
+\subsubsection*{Clés Composites pour Jonctions}
+\textbf{Pattern:} Les tables de jonction (JOUEUR\_EQUIPE, TERRAIN\_RENCONTRE) utilisent une clé primaire composite incluant \texttt{tournoi\_id}.
+\begin{itemize}
+    \item \textbf{Bénéfice:} Garantit l'unicité dans le contexte du tournoi
+    \item \textbf{Exemple PK:} \texttt{(joueur\_id, equipe\_id, tournoi\_id)} empêche un joueur d'être associé deux fois à la même équipe dans le même tournoi
+\end{itemize}
+
+\subsubsection*{Cascades pour Intégrité}
+\textbf{Règle:} \texttt{ON DELETE CASCADE} appliquée à tous les FK.
+\begin{itemize}
+    \item \textbf{Bénéfice:} Supprimer un tournoi cascade-supprime automatiquement tous les joueurs, équipes, rencontres, buts liés
+    \item \textbf{Sécurité:} Pas d'orphelins de données
+\end{itemize}
+
+\subsection*{📈 Cardinalités et Relations}
+
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Relation} & \textbf{Cardinalité} & \textbf{Type} \\
+\hline
+TOURNOI → JOUEUR & 1:N & Chaque tournoi a N joueurs \\
+TOURNOI → EQUIPE & 1:N & Chaque tournoi a N équipes \\
+TOURNOI → TERRAIN & 1:N & Chaque tournoi dispose de N terrains \\
+TOURNOI → RENCONTRE & 1:N & Chaque tournoi organise N rencontres \\
+TOURNOI → BUT & 1:N & Chaque tournoi enregistre N buts \\
+JOUEUR ↔ EQUIPE & N:N & via JOUEUR\_EQUIPE \\
+EQUIPE → RENCONTRE & 1:N & (role: équipe A, B, gagnante) \\
+EQUIPE → BUT & 1:N & Équipe marque N buts \\
+JOUEUR → BUT & 1:N & Joueur inscrit N buts \\
+TERRAIN ↔ RENCONTRE & N:N & via TERRAIN\_RENCONTRE \\
+RENCONTRE → BUT & 1:N & Rencontre contient N buts \\
+\hline
+\end{tabular}
+
+\end{document}
