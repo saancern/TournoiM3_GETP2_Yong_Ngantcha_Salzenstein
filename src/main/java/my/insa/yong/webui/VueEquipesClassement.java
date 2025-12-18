@@ -279,19 +279,20 @@ public class VueEquipesClassement extends VerticalLayout {
         podium.setSpacing(true);
         podium.addClassName("podium-container");
 
-        podium.add(createPodiumColumn("🥈 2ème", second, "silver", showTournoi));
-        podium.add(createPodiumColumn("🥇 1er", first, "gold", showTournoi));
-        podium.add(createPodiumColumn("🥉 3ème", third, "bronze", showTournoi));
+        podium.add(createPodiumColumn("🥈 2ème", second, "silver", "podium-col-second", showTournoi));
+        podium.add(createPodiumColumn("🥇 1er", first, "gold", "podium-col-first", showTournoi));
+        podium.add(createPodiumColumn("🥉 3ème", third, "bronze", "podium-col-third", showTournoi));
 
         return podium;
     }
 
-    private VerticalLayout createPodiumColumn(String title, List<EquipeInfo> teams, String color, boolean showTournoi) {
+    private VerticalLayout createPodiumColumn(String title, List<EquipeInfo> teams, String color, String columnClass, boolean showTournoi) {
         VerticalLayout col = new VerticalLayout();
         col.setAlignItems(Alignment.CENTER);
         col.setSpacing(false);
         col.setPadding(false);
         col.addClassName("podium-column");
+        col.addClassName(columnClass);
 
         Span lbl = new Span(title);
         lbl.addClassName("podium-title");
