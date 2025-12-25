@@ -231,7 +231,7 @@ public class ResultSetUtils {
     public static class ResultSetAsLists {
 
         private final List<String> columnNames;
-        private final List<List<Object>> values;
+        private List<List<Object>> values;
 
         public ResultSetAsLists(List<String> columnNames, List<List<Object>> values) {
             this.columnNames = columnNames;
