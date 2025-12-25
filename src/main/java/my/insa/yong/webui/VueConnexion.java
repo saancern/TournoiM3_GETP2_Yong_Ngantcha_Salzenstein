@@ -1,8 +1,5 @@
 package my.insa.yong.webui;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import com.vaadin.flow.component.button.Button;
@@ -19,8 +16,9 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
+import my.insa.yong.model.UserManager;
+import my.insa.yong.model.UserManager.LoginResult;
 import my.insa.yong.model.UserSession;
-import my.insa.yong.utils.database.ConnectionPool;
 
 /**
  * Page de connexion/inscription en français
@@ -105,33 +103,21 @@ public class VueConnexion extends VerticalLayout {
         String surnom = champSurnom.getValue().trim();
         String motDePasse = champMotDePasse.getValue();
 
-        try (Connection con = ConnectionPool.getConnection()) {
-            String sql = "SELECT id, surnom, pass, isAdmin FROM utilisateur WHERE surnom = ?";
-            try (PreparedStatement pst = con.prepareStatement(sql)) {
-                pst.setString(1, surnom);
-                ResultSet rs = pst.executeQuery();
-
-                if (rs.next()) {
-                    String passStocke = rs.getString("pass");
-                    if (motDePasse.equals(passStocke)) {
-                        int userId = rs.getInt("id");
-                        boolean isAdmin = rs.getBoolean("isAdmin");
-                        
-                        // Set user session
-                        UserSession.setCurrentUser(userId, surnom, isAdmin);
-                        
-                        // Connexion réussie - automatically redirect based on admin status
-                        String roleMessage = isAdmin ? " (Administrateur)" : " (Utilisateur)";
-                        afficherNotificationSucces("Connexion réussie ! Bienvenue " + surnom + roleMessage);
-                        
-                        // Redirect to main page
-                        getUI().ifPresent(ui -> ui.navigate(""));
-                    } else {
-                        afficherNotificationErreur("Mot de passe incorrect.");
-                    }
-                } else {
-                    afficherNotificationErreur("Utilisateur non trouvé. Veuillez vous inscrire.");
-                }
+        try {
+            LoginResult result = UserManager.authenticateUser(surnom, motDePasse);
+            
+            if (result.isSuccess()) {
+                // Set user session
+                UserSession.setCurrentUser(result.getUserId(), result.getUsername(), result.isAdmin());
+                
+                // Connexion réussie - automatically redirect based on admin status
+                String roleMessage = result.isAdmin() ? " (Administrateur)" : " (Utilisateur)";
+                afficherNotificationSucces("Connexion réussie ! Bienvenue " + surnom + roleMessage);
+                
+                // Redirect to main page
+                getUI().ifPresent(ui -> ui.navigate(""));
+            } else {
+                afficherNotificationErreur(result.getErrorMessage());
             }
         } catch (SQLException ex) {
             afficherNotificationErreur("Erreur de connexion à la base de données : " + ex.getMessage());
@@ -168,49 +154,21 @@ public class VueConnexion extends VerticalLayout {
     }
 
     private void creerUtilisateur(String surnom, String motDePasse, boolean isAdmin) {
-        try (Connection con = ConnectionPool.getConnection()) {
-            // Vérifier si l'utilisateur existe déjà
-            String sqlVerif = "SELECT COUNT(*) FROM utilisateur WHERE surnom = ?";
-            try (PreparedStatement pstVerif = con.prepareStatement(sqlVerif)) {
-                pstVerif.setString(1, surnom);
-                ResultSet rs = pstVerif.executeQuery();
-                rs.next();
-
-                if (rs.getInt(1) > 0) {
-                    afficherNotificationErreur("Ce nom d'utilisateur existe déjà. Veuillez en choisir un autre ou vous connecter.");
-                    return;
-                }
-            }
-
-            // Créer le nouvel utilisateur
-            String sqlInsert = "INSERT INTO utilisateur (surnom, pass, isAdmin) VALUES (?, ?, ?)";
-            try (PreparedStatement pstInsert = con.prepareStatement(sqlInsert, PreparedStatement.RETURN_GENERATED_KEYS)) {
-                pstInsert.setString(1, surnom);
-                pstInsert.setString(2, motDePasse);
-                pstInsert.setBoolean(3, isAdmin);
-
-                int rowsAffected = pstInsert.executeUpdate();
-
-                if (rowsAffected > 0) {
-                    // Get the generated user ID
-                    ResultSet generatedKeys = pstInsert.getGeneratedKeys();
-                    int userId = -1;
-                    if (generatedKeys.next()) {
-                        userId = generatedKeys.getInt(1);
-                    }
-                    
-                    // Set user session for automatic login
-                    UserSession.setCurrentUser(userId, surnom, isAdmin);
-                    
-                    String roleMessage = isAdmin ? " (Administrateur)" : " (Utilisateur)";
-                    afficherNotificationSucces("Inscription réussie ! Connexion automatique..." + roleMessage);
-                    viderChamps();
-                    
-                    // Automatically login the user and redirect
-                    getUI().ifPresent(ui -> ui.navigate(""));
-                } else {
-                    afficherNotificationErreur("Échec de l'inscription. Veuillez réessayer.");
-                }
+        try {
+            LoginResult result = UserManager.registerUser(surnom, motDePasse, isAdmin);
+            
+            if (result.isSuccess()) {
+                // Set user session for automatic login
+                UserSession.setCurrentUser(result.getUserId(), result.getUsername(), result.isAdmin());
+                
+                String roleMessage = result.isAdmin() ? " (Administrateur)" : " (Utilisateur)";
+                afficherNotificationSucces("Inscription réussie ! Connexion automatique..." + roleMessage);
+                viderChamps();
+                
+                // Automatically login the user and redirect
+                getUI().ifPresent(ui -> ui.navigate(""));
+            } else {
+                afficherNotificationErreur(result.getErrorMessage());
             }
         } catch (SQLException ex) {
             afficherNotificationErreur("Erreur lors de l'inscription : " + ex.getMessage());

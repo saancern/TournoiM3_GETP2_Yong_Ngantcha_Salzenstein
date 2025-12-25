@@ -1,8 +1,5 @@
 package my.insa.yong.webui;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,8 +19,8 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouterLink;
 
+import my.insa.yong.model.PrincipaleClassement;
 import my.insa.yong.model.UserSession;
-import my.insa.yong.utils.database.ConnectionPool;
 import my.insa.yong.webui.components.BaseLayout;
 
 /**
@@ -257,42 +254,9 @@ public class VuePrincipale extends BaseLayout {
         ongoingMatches.clear();
         int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
 
-        // Charger tous les matchs du tournoi, avec priorité aux matchs non joués
-        // Si pas de matchs en cours, affiche les derniers matchs joués
-        String sql = "SELECT r.id, r.round_number, COALESCE(r.score_a, 0) as score_a, " +
-                     "COALESCE(r.score_b, 0) as score_b, " +
-                     "COALESCE(ea.nom_equipe, 'À déterminer') as equipe_a, " +
-                     "COALESCE(eb.nom_equipe, 'À déterminer') as equipe_b, " +
-                     "COALESCE(t.nom_terrain, '-') as nom_terrain, " +
-                     "COALESCE(r.played, false) as played " +
-                     "FROM rencontre r " +
-                     "LEFT JOIN equipe ea ON r.equipe_a_id = ea.id " +
-                     "LEFT JOIN equipe eb ON r.equipe_b_id = eb.id " +
-                     "LEFT JOIN terrain_rencontre tr ON r.id = tr.rencontre_id AND tr.tournoi_id = ? " +
-                     "LEFT JOIN terrain t ON tr.terrain_id = t.id " +
-                     "WHERE r.tournoi_id = ? " +
-                     "ORDER BY r.played ASC, r.round_number DESC, r.id DESC";
-
-        try (Connection con = ConnectionPool.getConnection();
-             PreparedStatement pst = con.prepareStatement(sql)) {
-
-            pst.setInt(1, tournoiId);
-            pst.setInt(2, tournoiId);
-
-            ResultSet rs = pst.executeQuery();
-            while (rs.next()) {
-                MatchInfo match = new MatchInfo(
-                    rs.getInt("id"),
-                    rs.getInt("round_number"),
-                    rs.getString("equipe_a"),
-                    rs.getString("equipe_b"),
-                    rs.getInt("score_a"),
-                    rs.getInt("score_b"),
-                    rs.getString("nom_terrain")
-                );
-                ongoingMatches.add(match);
-            }
-
+        try {
+            my.insa.yong.model.PrincipaleClassement.MatchInfo modelMatch = PrincipaleClassement.chargerDernierMatch(tournoiId);
+            ongoingMatches.add(convertToMatchInfo(modelMatch));
         } catch (SQLException ex) {
             System.err.println("Erreur lors du chargement des matchs en cours: " + ex.getMessage());
         }
@@ -303,6 +267,18 @@ public class VuePrincipale extends BaseLayout {
         }
 
         currentMatchIndex = 0;
+    }
+
+    private MatchInfo convertToMatchInfo(my.insa.yong.model.PrincipaleClassement.MatchInfo modelMatch) {
+        return new MatchInfo(
+            modelMatch.getId(),
+            modelMatch.getRoundNumber(),
+            modelMatch.getTeamAName(),
+            modelMatch.getTeamBName(),
+            modelMatch.getScoreA(),
+            modelMatch.getScoreB(),
+            modelMatch.getTerrainName()
+        );
     }
 
 // Classe interne pour stocker les informations d'un match
