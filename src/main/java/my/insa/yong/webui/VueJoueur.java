@@ -1,10 +1,7 @@
 package my.insa.yong.webui;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 
 import com.vaadin.flow.component.button.Button;
@@ -296,30 +293,10 @@ public class VueJoueur extends BaseLayout {
      * Charge les joueurs dans le sélecteur
      */
     private void chargerJoueursSelector() {
-        List<Joueur> joueurs = new ArrayList<>();
-        
         try (Connection con = ConnectionPool.getConnection()) {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-            String sql = "SELECT id, prenom, nom, age, sexe, taille FROM joueur WHERE tournoi_id=? ORDER BY nom, prenom";
-            try (PreparedStatement pst = con.prepareStatement(sql)) {
-                pst.setInt(1, tournoiId);
-                try (ResultSet rs = pst.executeQuery()) {
-                    while (rs.next()) {
-                        Joueur joueur = new Joueur(
-                            rs.getInt("id"),
-                            rs.getString("prenom"),
-                            rs.getString("nom"),
-                            rs.getInt("age"),
-                            rs.getString("sexe"),
-                            rs.getDouble("taille")
-                        );
-                        joueurs.add(joueur);
-                    }
-                }
-            }
-            
+            List<Joueur> joueurs = Joueur.chargerJoueursPourTournoi(con, tournoiId);
             playerSelector.setItems(joueurs);
-            
         } catch (SQLException ex) {
             Notification.show("Erreur lors du chargement des joueurs : " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER)
                 .addThemeVariants(NotificationVariant.LUMO_ERROR);
@@ -407,27 +384,12 @@ public class VueJoueur extends BaseLayout {
         int age = ageDouble.intValue();
 
         try (Connection con = ConnectionPool.getConnection()) {
-            String sql = "UPDATE joueur SET prenom = ?, nom = ?, age = ?, sexe = ?, taille = ? WHERE id = ?";
-            try (PreparedStatement pst = con.prepareStatement(sql)) {
-                pst.setString(1, prenom);
-                pst.setString(2, nom);
-                pst.setInt(3, age);
-                pst.setString(4, sexe);
-                pst.setDouble(5, taille);
-                pst.setInt(6, joueurSelectionne.getId());
-                
-                int rows = pst.executeUpdate();
-                if (rows > 0) {
-                    Notification.show("Joueur modifié avec succès !", 3000, Notification.Position.TOP_CENTER)
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                    viderFormulaire();
-                    chargerJoueurs();
-                    chargerJoueursSelector();
-                } else {
-                    Notification.show("Échec de la modification du joueur.", 3000, Notification.Position.TOP_CENTER)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-                }
-            }
+            Joueur.modifierJoueur(con, joueurSelectionne.getId(), prenom, nom, age, sexe, taille);
+            Notification.show("Joueur modifié avec succès !", 3000, Notification.Position.TOP_CENTER)
+                .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            viderFormulaire();
+            chargerJoueurs();
+            chargerJoueursSelector();
         } catch (SQLException ex) {
             Notification.show("Erreur lors de la modification : " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER)
                 .addThemeVariants(NotificationVariant.LUMO_ERROR);
@@ -447,25 +409,14 @@ public class VueJoueur extends BaseLayout {
 
         try (Connection con = ConnectionPool.getConnection()) {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-            String sql = "DELETE FROM joueur WHERE id = ? AND tournoi_id = ?";
-            try (PreparedStatement pst = con.prepareStatement(sql)) {
-                pst.setInt(1, joueurSelectionne.getId());
-                pst.setInt(2, tournoiId);
-                
-                int rows = pst.executeUpdate();
-                if (rows > 0) {
-                    Notification.show("Joueur supprimé avec succès !", 3000, Notification.Position.TOP_CENTER)
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                    viderFormulaire();
-                    chargerJoueurs();
-                    chargerJoueursSelector();
-                    // Revenir au mode Ajouter après suppression
-                    setMode(OperationMode.AJOUTER);
-                } else {
-                    Notification.show("Échec de la suppression du joueur.", 3000, Notification.Position.TOP_CENTER)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-                }
-            }
+            Joueur.supprimerJoueur(con, joueurSelectionne.getId(), tournoiId);
+            Notification.show("Joueur supprimé avec succès !", 3000, Notification.Position.TOP_CENTER)
+                .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            viderFormulaire();
+            chargerJoueurs();
+            chargerJoueursSelector();
+            // Revenir au mode Ajouter après suppression
+            setMode(OperationMode.AJOUTER);
         } catch (SQLException ex) {
             Notification.show("Erreur lors de la suppression : " + ex.getMessage(), 4000, Notification.Position.TOP_CENTER)
                 .addThemeVariants(NotificationVariant.LUMO_ERROR);
@@ -476,28 +427,9 @@ public class VueJoueur extends BaseLayout {
      * Charge tous les joueurs depuis la base de données et les affiche dans le tableau
      */
     private void chargerJoueurs() {
-        List<Joueur> joueurs = new ArrayList<>();
-        
         try (Connection con = ConnectionPool.getConnection()) {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-            String sql = "SELECT * FROM joueur WHERE tournoi_id = ? ORDER BY nom, prenom";
-            try (PreparedStatement pst = con.prepareStatement(sql)) {
-                pst.setInt(1, tournoiId);
-                try (ResultSet rs = pst.executeQuery()) {
-                
-                    while (rs.next()) {
-                        Joueur joueur = new Joueur(
-                            rs.getInt("id"),
-                            rs.getString("prenom"),
-                            rs.getString("nom"),
-                            rs.getInt("age"),
-                            rs.getString("sexe"),
-                            rs.getDouble("taille")
-                        );
-                        joueurs.add(joueur);
-                    }
-                }
-            }
+            List<Joueur> joueurs = Joueur.chargerJoueursPourTournoi(con, tournoiId);
             
             // Mettre à jour le tableau
             joueursGrid.setItems(joueurs);

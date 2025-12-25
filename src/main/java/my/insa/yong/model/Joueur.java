@@ -2,8 +2,11 @@ package my.insa.yong.model;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 import my.insa.yong.utils.database.ClasseMiroir;
 
@@ -119,5 +122,95 @@ public class Joueur extends ClasseMiroir {
     @Override
     public String toString() {
         return String.format("%s %s (%d ans, %s, %.1f cm)", prenom, nom, age, sexe, taille);
+    }
+
+    /**
+     * Charge tous les joueurs pour le tournoi courant
+     */
+    public static List<Joueur> chargerJoueursPourTournoi(Connection con, int tournoiId) throws SQLException {
+        List<Joueur> joueurs = new ArrayList<>();
+        
+        String sql = "SELECT id, prenom, nom, age, sexe, taille FROM joueur WHERE tournoi_id=? ORDER BY nom, prenom";
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setInt(1, tournoiId);
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    Joueur joueur = new Joueur(
+                        rs.getInt("id"),
+                        rs.getString("prenom"),
+                        rs.getString("nom"),
+                        rs.getInt("age"),
+                        rs.getString("sexe"),
+                        rs.getDouble("taille")
+                    );
+                    joueurs.add(joueur);
+                }
+            }
+        }
+        
+        return joueurs;
+    }
+
+    /**
+     * Charge tous les joueurs pour le tournoi courant avec tri personnalisé
+     */
+    public static List<Joueur> chargerJoueursPourTournoi(Connection con, int tournoiId, String sortBy) throws SQLException {
+        List<Joueur> joueurs = new ArrayList<>();
+        
+        String orderByClause = switch (sortBy) {
+            case "Prénom" -> "ORDER BY prenom, nom";
+            case "Âge" -> "ORDER BY age DESC, nom";
+            case "Taille" -> "ORDER BY taille DESC, nom";
+            case "Sexe" -> "ORDER BY sexe, nom, prenom";
+            default -> "ORDER BY nom, prenom";
+        };
+        
+        String sql = "SELECT id, prenom, nom, age, sexe, taille FROM joueur WHERE tournoi_id=? " + orderByClause;
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setInt(1, tournoiId);
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    Joueur joueur = new Joueur(
+                        rs.getInt("id"),
+                        rs.getString("prenom"),
+                        rs.getString("nom"),
+                        rs.getInt("age"),
+                        rs.getString("sexe"),
+                        rs.getDouble("taille")
+                    );
+                    joueurs.add(joueur);
+                }
+            }
+        }
+        
+        return joueurs;
+    }
+
+    /**
+     * Modifie un joueur existant
+     */
+    public static void modifierJoueur(Connection con, int joueurId, String prenom, String nom, int age, String sexe, double taille) throws SQLException {
+        String sql = "UPDATE joueur SET prenom = ?, nom = ?, age = ?, sexe = ?, taille = ? WHERE id = ?";
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, prenom);
+            pst.setString(2, nom);
+            pst.setInt(3, age);
+            pst.setString(4, sexe);
+            pst.setDouble(5, taille);
+            pst.setInt(6, joueurId);
+            pst.executeUpdate();
+        }
+    }
+
+    /**
+     * Supprime un joueur d'un tournoi
+     */
+    public static void supprimerJoueur(Connection con, int joueurId, int tournoiId) throws SQLException {
+        String sql = "DELETE FROM joueur WHERE id = ? AND tournoi_id = ?";
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setInt(1, joueurId);
+            pst.setInt(2, tournoiId);
+            pst.executeUpdate();
+        }
     }
 }

@@ -88,48 +88,9 @@ public class VueJoueur_alle extends VerticalLayout {
     private void chargerJoueurs(String sortBy) {
         joueurs.clear(); // Vider la liste avant de recharger
         
-        // Construire la clause ORDER BY selon le critère choisi
-        String orderByClause;
-        switch (sortBy) {
-            case "Nom":
-                orderByClause = "ORDER BY nom, prenom";
-                break;
-            case "Prénom":
-                orderByClause = "ORDER BY prenom, nom";
-                break;
-            case "Âge":
-                orderByClause = "ORDER BY age DESC, nom";
-                break;
-            case "Taille":
-                orderByClause = "ORDER BY taille DESC, nom";
-                break;
-            case "Sexe":
-                orderByClause = "ORDER BY sexe, nom, prenom";
-                break;
-            default:
-                orderByClause = "ORDER BY nom, prenom";
-                break;
-        }
-        
         int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-        String sql = "SELECT id, nom, prenom, age, sexe, taille FROM joueur WHERE tournoi_id = ? " + orderByClause;
-        
-        try (Connection connection = ConnectionPool.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setInt(1, tournoiId);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    Joueur joueur = new Joueur(
-                        rs.getInt("id"),
-                        rs.getString("prenom"),
-                        rs.getString("nom"),
-                        rs.getInt("age"),
-                        rs.getString("sexe"),
-                        rs.getDouble("taille")
-                    );
-                    joueurs.add(joueur);
-                }
-            }
+        try (Connection connection = ConnectionPool.getConnection()) {
+            joueurs.addAll(Joueur.chargerJoueursPourTournoi(connection, tournoiId, sortBy));
         } catch (SQLException e) {
             e.printStackTrace();
         }
