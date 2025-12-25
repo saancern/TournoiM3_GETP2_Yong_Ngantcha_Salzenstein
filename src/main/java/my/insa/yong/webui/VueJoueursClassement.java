@@ -15,8 +15,8 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
 
-import my.insa.yong.model.UserSession;
 import my.insa.yong.model.JoueurClassement;
+import my.insa.yong.model.UserSession;
 import my.insa.yong.utils.database.ConnectionPool;
 
 public class VueJoueursClassement extends VerticalLayout {

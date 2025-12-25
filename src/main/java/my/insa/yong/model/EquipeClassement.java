@@ -150,13 +150,13 @@ public class EquipeClassement {
         String sql = "SELECT e.id, e.nom_equipe, " +
                      "SUM(CASE WHEN r.winner_id = e.id THEN 3 " +
                      "         WHEN r.winner_id IS NOT NULL AND r.winner_id != e.id THEN 0 " +
-                     "         WHEN r.equipe1_id = e.id OR r.equipe2_id = e.id THEN 1 " +
+                     "         WHEN r.equipe_a_id = e.id OR r.equipe_b_id = e.id THEN 1 " +
                      "         ELSE 0 END) as points, " +
                      "SUM(CASE WHEN r.winner_id = e.id THEN 1 ELSE 0 END) as victoires, " +
-                     "SUM(CASE WHEN r.winner_id IS NOT NULL AND r.winner_id != e.id AND (r.equipe1_id = e.id OR r.equipe2_id = e.id) THEN 1 ELSE 0 END) as defaites, " +
-                     "SUM(CASE WHEN r.winner_id IS NULL AND (r.equipe1_id = e.id OR r.equipe2_id = e.id) THEN 1 ELSE 0 END) as matchsNuls " +
+                     "SUM(CASE WHEN r.winner_id IS NOT NULL AND r.winner_id != e.id AND (r.equipe_a_id = e.id OR r.equipe_b_id = e.id) THEN 1 ELSE 0 END) as defaites, " +
+                     "SUM(CASE WHEN r.winner_id IS NULL AND (r.equipe_a_id = e.id OR r.equipe_b_id = e.id) THEN 1 ELSE 0 END) as matchsNuls " +
                      "FROM equipe e " +
-                     "LEFT JOIN rencontre r ON (r.equipe1_id = e.id OR r.equipe2_id = e.id) AND r.tournoi_id = ? " +
+                     "LEFT JOIN rencontre r ON (r.equipe_a_id = e.id OR r.equipe_b_id = e.id) AND r.tournoi_id = ? " +
                      "WHERE e.tournoi_id = ? " +
                      "GROUP BY e.id, e.nom_equipe " +
                      "ORDER BY points DESC, victoires DESC, e.nom_equipe ASC";
@@ -196,13 +196,13 @@ public class EquipeClassement {
         String sql = "SELECT e.id, e.nom_equipe, t.nom_tournoi, " +
                      "SUM(CASE WHEN r.winner_id = e.id THEN 3 " +
                      "         WHEN r.winner_id IS NOT NULL AND r.winner_id != e.id THEN 0 " +
-                     "         WHEN r.equipe1_id = e.id OR r.equipe2_id = e.id THEN 1 " +
+                     "         WHEN r.equipe_a_id = e.id OR r.equipe_b_id = e.id THEN 1 " +
                      "         ELSE 0 END) as points, " +
                      "SUM(CASE WHEN r.winner_id = e.id THEN 1 ELSE 0 END) as victoires, " +
-                     "SUM(CASE WHEN r.winner_id IS NOT NULL AND r.winner_id != e.id AND (r.equipe1_id = e.id OR r.equipe2_id = e.id) THEN 1 ELSE 0 END) as defaites, " +
-                     "SUM(CASE WHEN r.winner_id IS NULL AND (r.equipe1_id = e.id OR r.equipe2_id = e.id) THEN 1 ELSE 0 END) as matchsNuls " +
+                     "SUM(CASE WHEN r.winner_id IS NOT NULL AND r.winner_id != e.id AND (r.equipe_a_id = e.id OR r.equipe_b_id = e.id) THEN 1 ELSE 0 END) as defaites, " +
+                     "SUM(CASE WHEN r.winner_id IS NULL AND (r.equipe_a_id = e.id OR r.equipe_b_id = e.id) THEN 1 ELSE 0 END) as matchsNuls " +
                      "FROM equipe e " +
-                     "LEFT JOIN rencontre r ON (r.equipe1_id = e.id OR r.equipe2_id = e.id) " +
+                     "LEFT JOIN rencontre r ON (r.equipe_a_id = e.id OR r.equipe_b_id = e.id) " +
                      "LEFT JOIN tournoi t ON e.tournoi_id = t.id " +
                      "GROUP BY e.id, e.nom_equipe, t.nom_tournoi " +
                      "ORDER BY points DESC, victoires DESC, e.nom_equipe ASC";

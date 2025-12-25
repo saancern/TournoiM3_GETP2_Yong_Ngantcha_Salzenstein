@@ -1,10 +1,7 @@
 package my.insa.yong.webui;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 
 import com.vaadin.flow.component.button.Button;
@@ -24,6 +21,8 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
 import my.insa.yong.model.Terrain;
+import my.insa.yong.model.TerrainClassement;
+import my.insa.yong.model.TerrainClassement.MatchInfo;
 import my.insa.yong.model.UserSession;
 import my.insa.yong.utils.database.ConnectionPool;
 import my.insa.yong.webui.components.BaseLayout;
@@ -53,28 +52,6 @@ public class VueTerrain extends BaseLayout {
     }
 
     private OperationMode currentMode = OperationMode.AJOUTER;
-
-    /**
-     * Classe interne pour afficher les informations de match
-     */
-    private static class MatchInfo {
-        int id;
-        String equipeA;
-        String equipeB;
-        String terrainNom;
-
-        MatchInfo(int id, String equipeA, String equipeB, int terrainId, String terrainNom) {
-            this.id = id;
-            this.equipeA = equipeA;
-            this.equipeB = equipeB;
-            this.terrainNom = terrainNom;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("%s vs %s", equipeA, equipeB);
-        }
-    }
 
     public VueTerrain() {
         // Initialiser les champs
@@ -213,9 +190,9 @@ public class VueTerrain extends BaseLayout {
         // Grid des matchs sans terrain assigné
         matchsGrid = new Grid<>(MatchInfo.class, false);
         matchsGrid.setHeight("250px");
-        matchsGrid.addColumn(m -> String.format("Match %d", m.id)).setHeader("ID");
+        matchsGrid.addColumn(m -> String.format("Match %d", m.getId())).setHeader("ID");
         matchsGrid.addColumn(MatchInfo::toString).setHeader("Match");
-        matchsGrid.addColumn(m -> m.terrainNom != null ? m.terrainNom : "Non assigné").setHeader("Terrain actuel");
+        matchsGrid.addColumn(m -> m.getTerrainNom() != null ? m.getTerrainNom() : "Non assigné").setHeader("Terrain actuel");
 
         lierButton = new Button("Assigner le terrain");
         lierButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -244,9 +221,9 @@ public class VueTerrain extends BaseLayout {
         // Grid pour afficher les matchs liés au terrain sélectionné
         terrainsMatchsGrid = new Grid<>(MatchInfo.class, false);
         terrainsMatchsGrid.setHeight("200px");
-        terrainsMatchsGrid.addColumn(m -> String.format("Match %d", m.id)).setHeader("ID").setAutoWidth(true);
+        terrainsMatchsGrid.addColumn(m -> String.format("Match %d", m.getId())).setHeader("ID").setAutoWidth(true);
         terrainsMatchsGrid.addColumn(MatchInfo::toString).setHeader("Match (A vs B)").setAutoWidth(true).setFlexGrow(1);
-        terrainsMatchsGrid.addColumn(m -> m.terrainNom != null ? m.terrainNom : "—").setHeader("Terrain assigné").setAutoWidth(true);
+        terrainsMatchsGrid.addColumn(m -> m.getTerrainNom() != null ? m.getTerrainNom() : "—").setHeader("Terrain assigné").setAutoWidth(true);
 
         H3 titreMatchsLies = new H3("Matchs assignés au terrain sélectionné");
         titreMatchsLies.addClassName("page-title");
@@ -263,18 +240,12 @@ public class VueTerrain extends BaseLayout {
 
     private String compterMatchs(Terrain terrain) {
         int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-        String sql = "SELECT COUNT(*) FROM terrain_rencontre WHERE terrain_id = ? AND tournoi_id = ?";
-        try (Connection con = ConnectionPool.getConnection();
-             PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setInt(1, terrain.getId());
-            pst.setInt(2, tournoiId);
-            ResultSet rs = pst.executeQuery();
-            if (rs.next()) {
-                return String.valueOf(rs.getInt(1));
-            }
+        try {
+            int count = TerrainClassement.compterMatchsParTerrain(terrain.getId(), tournoiId);
+            return String.valueOf(count);
         } catch (SQLException ex) {
+            return "0";
         }
-        return "0";
     }
 
     private void setMode(OperationMode mode) {
@@ -351,15 +322,9 @@ public class VueTerrain extends BaseLayout {
         terrain.setNomTerrain(nomTerrainField.getValue().trim());
         terrain.setNumero(numeroField.getValue());
 
-        try (Connection con = ConnectionPool.getConnection()) {
+        try {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-            String sql = "UPDATE terrain SET nom_terrain = ?, numero = ? WHERE id = ? AND tournoi_id = ?";
-            PreparedStatement pst = con.prepareStatement(sql);
-            pst.setString(1, terrain.getNomTerrain());
-            pst.setInt(2, terrain.getNumero());
-            pst.setInt(3, terrain.getId());
-            pst.setInt(4, tournoiId);
-            pst.executeUpdate();
+            Terrain.mettreAJourTerrain(terrain, tournoiId);
 
             afficherNotification("Terrain modifié avec succès", NotificationVariant.LUMO_SUCCESS);
             chargerTerrains();
@@ -385,13 +350,9 @@ public class VueTerrain extends BaseLayout {
         dialog.setConfirmButtonTheme("error primary");
 
         dialog.addConfirmListener(e -> {
-            try (Connection con = ConnectionPool.getConnection()) {
+            try {
                 int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-                String sql = "DELETE FROM terrain WHERE id = ? AND tournoi_id = ?";
-                PreparedStatement pst = con.prepareStatement(sql);
-                pst.setInt(1, terrain.getId());
-                pst.setInt(2, tournoiId);
-                pst.executeUpdate();
+                Terrain.supprimerTerrain(terrain.getId(), tournoiId);
 
                 afficherNotification("Terrain supprimé avec succès", NotificationVariant.LUMO_SUCCESS);
                 chargerTerrains();
@@ -418,31 +379,8 @@ public class VueTerrain extends BaseLayout {
 
         int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
 
-        try (Connection con = ConnectionPool.getConnection()) {
-            // Vérifier s'il y a déjà une liaison
-            String checkSql = "SELECT COUNT(*) FROM terrain_rencontre WHERE rencontre_id = ? AND tournoi_id = ?";
-            PreparedStatement checkPst = con.prepareStatement(checkSql);
-            checkPst.setInt(1, match.id);
-            checkPst.setInt(2, tournoiId);
-            ResultSet rs = checkPst.executeQuery();
-
-            if (rs.next() && rs.getInt(1) > 0) {
-                // Supprimer l'ancienne liaison
-                String deleteSql = "DELETE FROM terrain_rencontre WHERE rencontre_id = ? AND tournoi_id = ?";
-                PreparedStatement deletePst = con.prepareStatement(deleteSql);
-                deletePst.setInt(1, match.id);
-                deletePst.setInt(2, tournoiId);
-                deletePst.executeUpdate();
-            }
-
-            // Ajouter la nouvelle liaison
-            String insertSql = "INSERT INTO terrain_rencontre (terrain_id, rencontre_id, tournoi_id) VALUES (?, ?, ?)";
-            PreparedStatement insertPst = con.prepareStatement(insertSql);
-            insertPst.setInt(1, terrain.getId());
-            insertPst.setInt(2, match.id);
-            insertPst.setInt(3, tournoiId);
-            insertPst.executeUpdate();
-
+        try {
+            TerrainClassement.assignerTerrainAuMatch(terrain.getId(), match.getId(), tournoiId);
             afficherNotification("Terrain assigné au match avec succès", NotificationVariant.LUMO_SUCCESS);
             chargerMatchs();
             chargerTerrains();
@@ -454,103 +392,38 @@ public class VueTerrain extends BaseLayout {
     }
 
     private void chargerTerrains() {
-        List<Terrain> terrains = new ArrayList<>();
-        int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-        String sql = "SELECT id, nom_terrain, numero FROM terrain WHERE tournoi_id = ? ORDER BY numero ASC";
-
-        try (Connection con = ConnectionPool.getConnection();
-             PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setInt(1, tournoiId);
-            ResultSet rs = pst.executeQuery();
-
-            while (rs.next()) {
-                terrains.add(new Terrain(
-                        rs.getInt("id"),
-                        rs.getString("nom_terrain"),
-                        rs.getInt("numero")
-                ));
+        try {
+            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            List<Terrain> terrains = TerrainClassement.chargerTerrains(tournoiId);
+            
+            terrainsGrid.setItems(terrains);
+            terrainSelector.setItems(terrains);
+            if (matchTerrainSelector != null) {
+                matchTerrainSelector.setItems(terrains);
             }
         } catch (SQLException ex) {
-        }
-
-        terrainsGrid.setItems(terrains);
-        terrainSelector.setItems(terrains);
-        if (matchTerrainSelector != null) {
-            matchTerrainSelector.setItems(terrains);
+            afficherNotification("Erreur: " + ex.getMessage(), NotificationVariant.LUMO_ERROR);
         }
     }
 
     private void chargerMatchs() {
-        List<MatchInfo> matchs = new ArrayList<>();
-        int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-        String sql = "SELECT r.id, e1.nom_equipe as equipeA, e2.nom_equipe as equipeB, " +
-                     "COALESCE(tr.terrain_id, -1) as terrain_id, t.nom_terrain " +
-                     "FROM rencontre r " +
-                     "LEFT JOIN equipe e1 ON r.equipe_a_id = e1.id " +
-                     "LEFT JOIN equipe e2 ON r.equipe_b_id = e2.id " +
-                     "LEFT JOIN terrain_rencontre tr ON r.id = tr.rencontre_id AND tr.tournoi_id = ? " +
-                     "LEFT JOIN terrain t ON tr.terrain_id = t.id " +
-                     "WHERE r.tournoi_id = ? " +
-                     "ORDER BY r.round_number, r.id";
-
-        try (Connection con = ConnectionPool.getConnection();
-             PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setInt(1, tournoiId);
-            pst.setInt(2, tournoiId);
-            ResultSet rs = pst.executeQuery();
-
-            while (rs.next()) {
-                matchs.add(new MatchInfo(
-                        rs.getInt("id"),
-                        rs.getString("equipeA") != null ? rs.getString("equipeA") : "TBD",
-                        rs.getString("equipeB") != null ? rs.getString("equipeB") : "TBD",
-                        rs.getInt("terrain_id"),
-                        rs.getString("nom_terrain")
-                ));
-            }
+        try {
+            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            List<MatchInfo> matchs = TerrainClassement.chargerMatchs(tournoiId);
+            matchsGrid.setItems(matchs);
         } catch (SQLException ex) {
+            afficherNotification("Erreur: " + ex.getMessage(), NotificationVariant.LUMO_ERROR);
         }
-
-        matchsGrid.setItems(matchs);
     }
 
     private void chargerMatchsParTerrain(Terrain terrain) {
-        List<MatchInfo> matchs = new ArrayList<>();
-        int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-        
-        // Récupère uniquement les matchs qui sont LIÉS à ce terrain spécifique
-        String sql = "SELECT r.id, e1.nom_equipe as equipeA, e2.nom_equipe as equipeB, " +
-                     "t.id as terrain_id, t.nom_terrain " +
-                     "FROM rencontre r " +
-                     "LEFT JOIN equipe e1 ON r.equipe_a_id = e1.id AND e1.tournoi_id = ? " +
-                     "LEFT JOIN equipe e2 ON r.equipe_b_id = e2.id AND e2.tournoi_id = ? " +
-                     "INNER JOIN terrain_rencontre tr ON r.id = tr.rencontre_id AND tr.tournoi_id = ? " +
-                     "INNER JOIN terrain t ON tr.terrain_id = t.id AND t.id = ? " +
-                     "WHERE r.tournoi_id = ? " +
-                     "ORDER BY r.round_number, r.id";
-
-        try (Connection con = ConnectionPool.getConnection();
-             PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setInt(1, tournoiId);
-            pst.setInt(2, tournoiId);
-            pst.setInt(3, tournoiId);
-            pst.setInt(4, terrain.getId());
-            pst.setInt(5, tournoiId);
-            ResultSet rs = pst.executeQuery();
-
-            while (rs.next()) {
-                matchs.add(new MatchInfo(
-                        rs.getInt("id"),
-                        rs.getString("equipeA") != null ? rs.getString("equipeA") : "TBD",
-                        rs.getString("equipeB") != null ? rs.getString("equipeB") : "TBD",
-                        rs.getInt("terrain_id"),
-                        rs.getString("nom_terrain")
-                ));
-            }
+        try {
+            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            List<MatchInfo> matchs = TerrainClassement.chargerMatchsParTerrain(terrain.getId(), tournoiId);
+            terrainsMatchsGrid.setItems(matchs);
         } catch (SQLException ex) {
+            afficherNotification("Erreur: " + ex.getMessage(), NotificationVariant.LUMO_ERROR);
         }
-
-        terrainsMatchsGrid.setItems(matchs);
     }
 
     private void afficherNotification(String message, NotificationVariant variant) {

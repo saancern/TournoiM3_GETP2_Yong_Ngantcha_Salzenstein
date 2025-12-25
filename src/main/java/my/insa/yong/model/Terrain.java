@@ -6,6 +6,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import my.insa.yong.utils.database.ClasseMiroir;
+import my.insa.yong.utils.database.ConnectionPool;
 
 /**
  * Représente un terrain dans le système
@@ -72,5 +73,33 @@ public class Terrain extends ClasseMiroir {
     @Override
     public String toString() {
         return String.format("Terrain %d - %s", numero, nomTerrain);
+    }
+
+    /**
+     * Update an existing terrain in the database
+     */
+    public static void mettreAJourTerrain(Terrain terrain, int tournoiId) throws SQLException {
+        String sql = "UPDATE terrain SET nom_terrain = ?, numero = ? WHERE id = ? AND tournoi_id = ?";
+        try (Connection con = ConnectionPool.getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, terrain.getNomTerrain());
+            pst.setInt(2, terrain.getNumero());
+            pst.setInt(3, terrain.getId());
+            pst.setInt(4, tournoiId);
+            pst.executeUpdate();
+        }
+    }
+
+    /**
+     * Delete a terrain from the database
+     */
+    public static void supprimerTerrain(int terrainId, int tournoiId) throws SQLException {
+        String sql = "DELETE FROM terrain WHERE id = ? AND tournoi_id = ?";
+        try (Connection con = ConnectionPool.getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setInt(1, terrainId);
+            pst.setInt(2, tournoiId);
+            pst.executeUpdate();
+        }
     }
 }
