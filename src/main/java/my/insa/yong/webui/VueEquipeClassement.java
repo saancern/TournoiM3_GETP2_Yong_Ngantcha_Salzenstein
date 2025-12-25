@@ -11,8 +11,8 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
-import my.insa.yong.model.EquipeClassement;
-import my.insa.yong.model.EquipeClassement.RankingInfo;
+import my.insa.yong.model.Classement;
+import my.insa.yong.model.Classement.RankingInfo;
 import my.insa.yong.model.UserSession;
 import my.insa.yong.utils.database.ConnectionPool;
 import my.insa.yong.webui.components.BaseLayout;
@@ -70,7 +70,7 @@ public class VueEquipeClassement extends VerticalLayout {
     private void chargerMeilleuresEquipes() {
         try (Connection con = ConnectionPool.getConnection()) {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-            List<RankingInfo> equipes = EquipeClassement.chargerClassementTournoiActuel(con, tournoiId);
+            List<RankingInfo> equipes = Classement.chargerClassementTournoiActuel(con, tournoiId);
             
             equipesGrid.setItems(equipes);
             noDataMessage.setVisible(equipes.isEmpty());

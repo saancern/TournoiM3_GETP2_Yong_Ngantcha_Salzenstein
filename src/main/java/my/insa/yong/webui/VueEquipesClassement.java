@@ -15,8 +15,8 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
 
-import my.insa.yong.model.EquipeClassement;
-import my.insa.yong.model.EquipeClassement.RankingInfoAllTournois;
+import my.insa.yong.model.Classement;
+import my.insa.yong.model.Classement.RankingInfoAllTournois;
 import my.insa.yong.model.UserSession;
 import my.insa.yong.utils.database.ConnectionPool;
 
@@ -127,7 +127,7 @@ public class VueEquipesClassement extends VerticalLayout {
     private void loadEquipesCurrentTournoi() {
         try (Connection con = ConnectionPool.getConnection()) {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-            currentEquipesCache = EquipeClassement.chargerClassementTournoiActuelAvecPoints(con, tournoiId);
+            currentEquipesCache = Classement.chargerClassementTournoiActuelAvecPoints(con, tournoiId);
             gridCurrentTournoi.setItems(currentEquipesCache);
             updateLeaderboardCurrent();
         } catch (SQLException ex) {
@@ -137,7 +137,7 @@ public class VueEquipesClassement extends VerticalLayout {
 
     private void loadEquipesAllTournois() {
         try (Connection con = ConnectionPool.getConnection()) {
-            allEquipesCache = EquipeClassement.chargerClassementTousTournois(con);
+            allEquipesCache = Classement.chargerClassementTousTournois(con);
             gridAllTournois.setItems(allEquipesCache);
             updateLeaderboardAll();
         } catch (SQLException ex) {

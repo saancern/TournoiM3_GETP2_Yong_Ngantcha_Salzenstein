@@ -14,9 +14,9 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
+import my.insa.yong.model.UserSession;
 import my.insa.yong.model.Utilisateur;
 import my.insa.yong.model.Utilisateur.LoginResult;
-import my.insa.yong.model.UserSession;
 
 /**
  * Page de connexion/inscription en français
