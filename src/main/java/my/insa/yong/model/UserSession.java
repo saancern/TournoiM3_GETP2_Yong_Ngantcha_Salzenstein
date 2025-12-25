@@ -1,10 +1,12 @@
 package my.insa.yong.model;
 
-import com.vaadin.flow.server.VaadinSession;
 import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Optional;
+
+import com.vaadin.flow.server.VaadinSession;
+
 import my.insa.yong.utils.database.ConnectionPool;
 
 /**
@@ -196,13 +198,13 @@ public class UserSession implements Serializable {
         try (Connection con = ConnectionPool.getConnection()) {
             UserSession session = getOrCreate();
             if (session.currentTournoiId != null) {
-                Parametre tournoi = Parametre.getParametreParId(con, session.currentTournoiId);
+                Parametre tournoi = Parametre.getParametreById(con, session.currentTournoiId);
                 if (tournoi != null) {
                     return tournoi.getSport();
                 }
             }
             // Fallback vers le tournoi par défaut
-            Parametre tournoiDefaut = Parametre.getParametreParId(con, 1);
+            Parametre tournoiDefaut = Parametre.getParametreById(con, 1);
             return tournoiDefaut != null ? tournoiDefaut.getSport() : "Foot";
         } catch (SQLException ex) {
             return "Foot"; // Valeur par défaut en cas d'erreur
@@ -216,13 +218,13 @@ public class UserSession implements Serializable {
         try (Connection con = ConnectionPool.getConnection()) {
             UserSession session = getOrCreate();
             if (session.currentTournoiId != null) {
-                Parametre tournoi = Parametre.getParametreParId(con, session.currentTournoiId);
+                Parametre tournoi = Parametre.getParametreById(con, session.currentTournoiId);
                 if (tournoi != null) {
                     return tournoi.getNombreJoueursParEquipe();
                 }
             }
             // Fallback vers le tournoi par défaut
-            Parametre tournoiDefaut = Parametre.getParametreParId(con, 1);
+            Parametre tournoiDefaut = Parametre.getParametreById(con, 1);
             return tournoiDefaut != null ? tournoiDefaut.getNombreJoueursParEquipe() : 11;
         } catch (SQLException ex) {
             return 11; // Valeur par défaut en cas d'erreur
@@ -236,13 +238,13 @@ public class UserSession implements Serializable {
         try (Connection con = ConnectionPool.getConnection()) {
             UserSession session = getOrCreate();
             if (session.currentTournoiId != null) {
-                Parametre tournoi = Parametre.getParametreParId(con, session.currentTournoiId);
+                Parametre tournoi = Parametre.getParametreById(con, session.currentTournoiId);
                 if (tournoi != null) {
                     return tournoi.getNombreTerrains();
                 }
             }
             // Fallback vers le tournoi par défaut
-            Parametre tournoiDefaut = Parametre.getParametreParId(con, 1);
+            Parametre tournoiDefaut = Parametre.getParametreById(con, 1);
             return tournoiDefaut != null ? tournoiDefaut.getNombreTerrains() : 10;
         } catch (SQLException ex) {
             return 10; // Valeur par défaut en cas d'erreur
@@ -254,7 +256,7 @@ public class UserSession implements Serializable {
      */
     private static void chargerTournoiParDefaut(UserSession session) {
         try (Connection con = ConnectionPool.getConnection()) {
-            Parametre tournoiDefaut = Parametre.getParametreParId(con, 1);
+            Parametre tournoiDefaut = Parametre.getParametreById(con, 1);
             if (tournoiDefaut != null) {
                 session.currentTournoiId = tournoiDefaut.getId();
                 session.currentTournoiName = tournoiDefaut.getNomTournoi();

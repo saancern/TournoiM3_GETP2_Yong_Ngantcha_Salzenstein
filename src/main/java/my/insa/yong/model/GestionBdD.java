@@ -14,7 +14,7 @@ import my.insa.yong.utils.database.ConnectionPool;
 public class GestionBdD {
 
     /**
-     * testgit
+     * 
      * @param con
      * @throws SQLException
      */

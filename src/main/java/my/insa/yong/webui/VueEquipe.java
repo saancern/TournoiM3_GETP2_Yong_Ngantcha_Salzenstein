@@ -692,7 +692,7 @@ public class VueEquipe extends BaseLayout {
         int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
 
         // Assurez-vous que l'import my.insa.yong.model.Parametre; est au début du fichier
-        Parametre params = Parametre.getParametreParId(con, tournoiId);
+        Parametre params = Parametre.getParametreById(con, tournoiId);
 
         if (params != null) {
             // La règle est : Nombre max d'équipes = Nombre de Terrains * 2 

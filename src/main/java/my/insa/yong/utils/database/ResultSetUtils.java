@@ -1,15 +1,17 @@
 package my.insa.yong.utils.database;
 
-import my.insa.yong.utils.StringUtil;
-import my.insa.yong.utils.latex.LatexEscape;
-import my.insa.yong.utils.latex.LatexMode;
-import my.insa.yong.utils.matrice.MatriceToText;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.apache.commons.text.StringEscapeUtils;
+
+import my.insa.yong.utils.StringUtil;
+import my.insa.yong.utils.latex.LatexEscape;
+import my.insa.yong.utils.latex.LatexMode;
+import my.insa.yong.utils.matrice.MatriceToText;
 
 /**
  *
@@ -46,18 +48,17 @@ public class ResultSetUtils {
                 + "ALIGN=LEFT";
         ResultSetMetaData metadata = rs.getMetaData();
         int nombreColonnes = metadata.getColumnCount();
-        res.append("<TABLE CELLSPACING=0 COLS=" + nombreColonnes + " BORDER=1>\n");
+        res.append("<TABLE CELLSPACING=0 COLS=").append(nombreColonnes).append(" BORDER=1>\n");
         res.append("<TBODY>\n");
         res.append("<TR>\n");
         for (int i = 1; i <= nombreColonnes; i++) {
-            res.append("  <TD " + headerStyle + ">" + metadata.getColumnName(i) + "</TD>\n");
+            res.append("  <TD ").append(headerStyle).append(">").append(metadata.getColumnName(i)).append("</TD>\n");
         }
         res.append("</TR>\n");
         while (rs.next()) {
             res.append("<TR>\n");
             for (int i = 1; i <= nombreColonnes; i++) {
-                res.append("  <TD " + normalStyle + ">"
-                        + StringEscapeUtils.escapeHtml4("" + rs.getObject(i)) + "</TD>\n");
+                res.append("  <TD ").append(normalStyle).append(">").append(StringEscapeUtils.escapeHtml4("" + rs.getObject(i))).append("</TD>\n");
             }
             res.append("</TR>\n");
         }
@@ -186,7 +187,7 @@ public class ResultSetUtils {
      * @throws java.sql.SQLException
      */
     public static Object[][] fromResultSetToMatrix(ResultSet rs) throws SQLException {
-        List<Object[]> resl = new ArrayList<Object[]>();
+        List<Object[]> resl = new ArrayList<>();
         ResultSetMetaData metadata = rs.getMetaData();
         int nombreColonnes = metadata.getColumnCount();
         while (rs.next()) {
@@ -213,7 +214,7 @@ public class ResultSetUtils {
      * @throws java.sql.SQLException
      */
     public static Object[] fromResultSetColumnToArray(ResultSet rs, int col) throws SQLException {
-        List<Object> res = new ArrayList<Object>();
+        List<Object> res = new ArrayList<>();
         while (rs.next()) {
             res.add(rs.getObject(col));
         }
@@ -229,8 +230,8 @@ public class ResultSetUtils {
      */
     public static class ResultSetAsLists {
 
-        private List<String> columnNames;
-        private List<List<Object>> values;
+        private final List<String> columnNames;
+        private final List<List<Object>> values;
 
         public ResultSetAsLists(List<String> columnNames, List<List<Object>> values) {
             this.columnNames = columnNames;

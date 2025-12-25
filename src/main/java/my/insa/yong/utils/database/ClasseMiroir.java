@@ -42,7 +42,7 @@ import java.sql.Statement;
  * </p>
  * <p>
  * en cohérence, le hashcode d'un objet est simplement sont id. si son id est -1
- * c'est une errue
+ * c'est une erreur
  * </p>
  *
  * @author saancern
