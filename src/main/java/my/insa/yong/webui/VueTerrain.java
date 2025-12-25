@@ -21,8 +21,8 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
 import my.insa.yong.model.Terrain;
-import my.insa.yong.model.TerrainClassement;
-import my.insa.yong.model.TerrainClassement.MatchInfo;
+import my.insa.yong.model.TournamentData;
+import my.insa.yong.model.TournamentData.MatchInfo;
 import my.insa.yong.model.UserSession;
 import my.insa.yong.utils.database.ConnectionPool;
 import my.insa.yong.webui.components.BaseLayout;
@@ -241,7 +241,7 @@ public class VueTerrain extends BaseLayout {
     private String compterMatchs(Terrain terrain) {
         int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
         try {
-            int count = TerrainClassement.compterMatchsParTerrain(terrain.getId(), tournoiId);
+            int count = TournamentData.compterMatchsParTerrain(terrain.getId(), tournoiId);
             return String.valueOf(count);
         } catch (SQLException ex) {
             return "0";
@@ -380,7 +380,7 @@ public class VueTerrain extends BaseLayout {
         int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
 
         try {
-            TerrainClassement.assignerTerrainAuMatch(terrain.getId(), match.getId(), tournoiId);
+            TournamentData.assignerTerrainAuMatch(terrain.getId(), match.getId(), tournoiId);
             afficherNotification("Terrain assigné au match avec succès", NotificationVariant.LUMO_SUCCESS);
             chargerMatchs();
             chargerTerrains();
@@ -394,7 +394,7 @@ public class VueTerrain extends BaseLayout {
     private void chargerTerrains() {
         try {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-            List<Terrain> terrains = TerrainClassement.chargerTerrains(tournoiId);
+            List<Terrain> terrains = TournamentData.chargerTerrains(tournoiId);
             
             terrainsGrid.setItems(terrains);
             terrainSelector.setItems(terrains);
@@ -409,7 +409,7 @@ public class VueTerrain extends BaseLayout {
     private void chargerMatchs() {
         try {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-            List<MatchInfo> matchs = TerrainClassement.chargerMatchs(tournoiId);
+            List<MatchInfo> matchs = TournamentData.chargerMatchs(tournoiId);
             matchsGrid.setItems(matchs);
         } catch (SQLException ex) {
             afficherNotification("Erreur: " + ex.getMessage(), NotificationVariant.LUMO_ERROR);
@@ -419,7 +419,7 @@ public class VueTerrain extends BaseLayout {
     private void chargerMatchsParTerrain(Terrain terrain) {
         try {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-            List<MatchInfo> matchs = TerrainClassement.chargerMatchsParTerrain(terrain.getId(), tournoiId);
+            List<MatchInfo> matchs = TournamentData.chargerMatchsParTerrain(terrain.getId(), tournoiId);
             terrainsMatchsGrid.setItems(matchs);
         } catch (SQLException ex) {
             afficherNotification("Erreur: " + ex.getMessage(), NotificationVariant.LUMO_ERROR);

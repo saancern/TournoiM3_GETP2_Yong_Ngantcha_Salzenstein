@@ -1,7 +1,5 @@
 package my.insa.yong.webui;
 
-import java.sql.SQLException;
-
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
@@ -16,8 +14,8 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
-import my.insa.yong.model.UserManager;
-import my.insa.yong.model.UserManager.LoginResult;
+import my.insa.yong.model.Utilisateur;
+import my.insa.yong.model.Utilisateur.LoginResult;
 import my.insa.yong.model.UserSession;
 
 /**
@@ -103,24 +101,20 @@ public class VueConnexion extends VerticalLayout {
         String surnom = champSurnom.getValue().trim();
         String motDePasse = champMotDePasse.getValue();
 
-        try {
-            LoginResult result = UserManager.authenticateUser(surnom, motDePasse);
+        LoginResult result = Utilisateur.authenticateUser(surnom, motDePasse);
+        
+        if (result.isSuccess()) {
+            // Set user session
+            UserSession.setCurrentUser(result.getUserId(), result.getUsername(), result.isAdmin());
             
-            if (result.isSuccess()) {
-                // Set user session
-                UserSession.setCurrentUser(result.getUserId(), result.getUsername(), result.isAdmin());
-                
-                // Connexion réussie - automatically redirect based on admin status
-                String roleMessage = result.isAdmin() ? " (Administrateur)" : " (Utilisateur)";
-                afficherNotificationSucces("Connexion réussie ! Bienvenue " + surnom + roleMessage);
-                
-                // Redirect to main page
-                getUI().ifPresent(ui -> ui.navigate(""));
-            } else {
-                afficherNotificationErreur(result.getErrorMessage());
-            }
-        } catch (SQLException ex) {
-            afficherNotificationErreur("Erreur de connexion à la base de données : " + ex.getMessage());
+            // Connexion réussie - automatically redirect based on admin status
+            String roleMessage = result.isAdmin() ? " (Administrateur)" : " (Utilisateur)";
+            afficherNotificationSucces("Connexion réussie ! Bienvenue " + surnom + roleMessage);
+            
+            // Redirect to main page
+            getUI().ifPresent(ui -> ui.navigate(""));
+        } else {
+            afficherNotificationErreur(result.getErrorMessage());
         }
     }
 
@@ -154,24 +148,20 @@ public class VueConnexion extends VerticalLayout {
     }
 
     private void creerUtilisateur(String surnom, String motDePasse, boolean isAdmin) {
-        try {
-            LoginResult result = UserManager.registerUser(surnom, motDePasse, isAdmin);
+        LoginResult result = Utilisateur.registerUser(surnom, motDePasse, isAdmin);
+        
+        if (result.isSuccess()) {
+            // Set user session for automatic login
+            UserSession.setCurrentUser(result.getUserId(), result.getUsername(), result.isAdmin());
             
-            if (result.isSuccess()) {
-                // Set user session for automatic login
-                UserSession.setCurrentUser(result.getUserId(), result.getUsername(), result.isAdmin());
-                
-                String roleMessage = result.isAdmin() ? " (Administrateur)" : " (Utilisateur)";
-                afficherNotificationSucces("Inscription réussie ! Connexion automatique..." + roleMessage);
-                viderChamps();
-                
-                // Automatically login the user and redirect
-                getUI().ifPresent(ui -> ui.navigate(""));
-            } else {
-                afficherNotificationErreur(result.getErrorMessage());
-            }
-        } catch (SQLException ex) {
-            afficherNotificationErreur("Erreur lors de l'inscription : " + ex.getMessage());
+            String roleMessage = result.isAdmin() ? " (Administrateur)" : " (Utilisateur)";
+            afficherNotificationSucces("Inscription réussie ! Connexion automatique..." + roleMessage);
+            viderChamps();
+            
+            // Automatically login the user and redirect
+            getUI().ifPresent(ui -> ui.navigate(""));
+        } else {
+            afficherNotificationErreur(result.getErrorMessage());
         }
     }
 

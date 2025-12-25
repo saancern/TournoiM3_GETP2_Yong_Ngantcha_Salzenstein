@@ -19,7 +19,7 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouterLink;
 
-import my.insa.yong.model.PrincipaleClassement;
+import my.insa.yong.model.TournamentData;
 import my.insa.yong.model.UserSession;
 import my.insa.yong.webui.components.BaseLayout;
 
@@ -255,7 +255,7 @@ public class VuePrincipale extends BaseLayout {
         int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
 
         try {
-            my.insa.yong.model.PrincipaleClassement.MatchInfo modelMatch = PrincipaleClassement.chargerDernierMatch(tournoiId);
+            TournamentData.DashboardMatchInfo modelMatch = TournamentData.chargerDernierMatch(tournoiId);
             ongoingMatches.add(convertToMatchInfo(modelMatch));
         } catch (SQLException ex) {
             System.err.println("Erreur lors du chargement des matchs en cours: " + ex.getMessage());
@@ -269,7 +269,7 @@ public class VuePrincipale extends BaseLayout {
         currentMatchIndex = 0;
     }
 
-    private MatchInfo convertToMatchInfo(my.insa.yong.model.PrincipaleClassement.MatchInfo modelMatch) {
+    private MatchInfo convertToMatchInfo(TournamentData.DashboardMatchInfo modelMatch) {
         return new MatchInfo(
             modelMatch.getId(),
             modelMatch.getRoundNumber(),

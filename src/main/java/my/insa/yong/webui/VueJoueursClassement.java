@@ -15,14 +15,14 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
 
-import my.insa.yong.model.JoueurClassement;
+import my.insa.yong.model.TournamentData;
 import my.insa.yong.model.UserSession;
 import my.insa.yong.utils.database.ConnectionPool;
 
 public class VueJoueursClassement extends VerticalLayout {
 
-    private Grid<JoueurClassement.ButeurInfo> gridCurrentTournoi;
-    private Grid<JoueurClassement.ButeurInfoAllTournois> gridAllTournois;
+    private Grid<TournamentData.ButeurInfo> gridCurrentTournoi;
+    private Grid<TournamentData.ButeurInfoAllTournois> gridAllTournois;
     private VerticalLayout contentLayout;
     private VerticalLayout leaderboardCurrentView;
     private VerticalLayout leaderboardAllView;
@@ -30,8 +30,8 @@ public class VueJoueursClassement extends VerticalLayout {
     private Button btnBackCurrent;
     private Button btnViewAllAll;
     private Button btnBackAll;
-    private List<JoueurClassement.ButeurInfo> currentButeursCache;
-    private List<JoueurClassement.ButeurInfoAllTournois> allButeursCache;
+    private List<TournamentData.ButeurInfo> currentButeursCache;
+    private List<TournamentData.ButeurInfoAllTournois> allButeursCache;
 
     public VueJoueursClassement() {
         setSizeFull();
@@ -100,15 +100,15 @@ public class VueJoueursClassement extends VerticalLayout {
     }
 
     @SuppressWarnings("deprecation")
-    private Grid<JoueurClassement.ButeurInfo> createGrid(boolean showTournoi) {
-        Grid<JoueurClassement.ButeurInfo> grid = new Grid<>(JoueurClassement.ButeurInfo.class, false);
+    private Grid<TournamentData.ButeurInfo> createGrid(boolean showTournoi) {
+        Grid<TournamentData.ButeurInfo> grid = new Grid<>(TournamentData.ButeurInfo.class, false);
         grid.setSizeFull();
         grid.setPageSize(20);
 
-        grid.addColumn(JoueurClassement.ButeurInfo::getPlaceFormatted).setHeader("Place").setWidth("100px").setFlexGrow(0);
-        grid.addColumn(JoueurClassement.ButeurInfo::getNomJoueur).setHeader("Joueur").setAutoWidth(true);
-        grid.addColumn(JoueurClassement.ButeurInfo::getNomEquipe).setHeader("Équipe").setAutoWidth(true);
-        grid.addColumn(JoueurClassement.ButeurInfo::getNombreButs).setHeader("Buts").setWidth("100px").setFlexGrow(0);
+        grid.addColumn(TournamentData.ButeurInfo::getPlaceFormatted).setHeader("Place").setWidth("100px").setFlexGrow(0);
+        grid.addColumn(TournamentData.ButeurInfo::getNomJoueur).setHeader("Joueur").setAutoWidth(true);
+        grid.addColumn(TournamentData.ButeurInfo::getNomEquipe).setHeader("Équipe").setAutoWidth(true);
+        grid.addColumn(TournamentData.ButeurInfo::getNombreButs).setHeader("Buts").setWidth("100px").setFlexGrow(0);
 
         if (showTournoi && !showTournoi) { // This is intentionally false - for future all-tournaments grid
             // grid.addColumn(...).setHeader("Tournoi")...
@@ -125,18 +125,18 @@ public class VueJoueursClassement extends VerticalLayout {
     }
 
     @SuppressWarnings("deprecation")
-    private Grid<JoueurClassement.ButeurInfoAllTournois> createAllGrid(boolean showTournoi) {
-        Grid<JoueurClassement.ButeurInfoAllTournois> grid = new Grid<>(JoueurClassement.ButeurInfoAllTournois.class, false);
+    private Grid<TournamentData.ButeurInfoAllTournois> createAllGrid(boolean showTournoi) {
+        Grid<TournamentData.ButeurInfoAllTournois> grid = new Grid<>(TournamentData.ButeurInfoAllTournois.class, false);
         grid.setSizeFull();
         grid.setPageSize(20);
 
-        grid.addColumn(JoueurClassement.ButeurInfoAllTournois::getPlaceFormatted).setHeader("Place").setWidth("100px").setFlexGrow(0);
-        grid.addColumn(JoueurClassement.ButeurInfoAllTournois::getNomJoueur).setHeader("Joueur").setAutoWidth(true);
-        grid.addColumn(JoueurClassement.ButeurInfoAllTournois::getNomEquipe).setHeader("Équipe").setAutoWidth(true);
-        grid.addColumn(JoueurClassement.ButeurInfoAllTournois::getNombreButs).setHeader("Buts").setWidth("100px").setFlexGrow(0);
+        grid.addColumn(TournamentData.ButeurInfoAllTournois::getPlaceFormatted).setHeader("Place").setWidth("100px").setFlexGrow(0);
+        grid.addColumn(TournamentData.ButeurInfoAllTournois::getNomJoueur).setHeader("Joueur").setAutoWidth(true);
+        grid.addColumn(TournamentData.ButeurInfoAllTournois::getNomEquipe).setHeader("Équipe").setAutoWidth(true);
+        grid.addColumn(TournamentData.ButeurInfoAllTournois::getNombreButs).setHeader("Buts").setWidth("100px").setFlexGrow(0);
 
         if (showTournoi) {
-            grid.addColumn(JoueurClassement.ButeurInfoAllTournois::getNomTournoi).setHeader("Tournoi").setAutoWidth(true);
+            grid.addColumn(TournamentData.ButeurInfoAllTournois::getNomTournoi).setHeader("Tournoi").setAutoWidth(true);
         }
 
         grid.setClassNameGenerator(buteur -> {
@@ -153,7 +153,7 @@ public class VueJoueursClassement extends VerticalLayout {
         int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
 
         try (Connection con = ConnectionPool.getConnection()) {
-            List<JoueurClassement.ButeurInfo> buteurs = JoueurClassement.chargerButeursTournoiActuel(con, tournoiId);
+            List<TournamentData.ButeurInfo> buteurs = TournamentData.chargerButeursTournoiActuel(con, tournoiId);
             currentButeursCache = buteurs;
             gridCurrentTournoi.setItems(buteurs);
             updateLeaderboardCurrent();
@@ -164,7 +164,7 @@ public class VueJoueursClassement extends VerticalLayout {
 
     private void loadButeursAllTournois() {
         try (Connection con = ConnectionPool.getConnection()) {
-            List<JoueurClassement.ButeurInfoAllTournois> buteurs = JoueurClassement.chargerButeursAllTournois(con);
+            List<TournamentData.ButeurInfoAllTournois> buteurs = TournamentData.chargerButeursAllTournois(con);
             allButeursCache = buteurs;
             gridAllTournois.setItems(buteurs);
             updateLeaderboardAll();
@@ -173,12 +173,12 @@ public class VueJoueursClassement extends VerticalLayout {
         }
     }
 
-    private HorizontalLayout buildPodium(List<JoueurClassement.ButeurInfo> buteurs, boolean showTournoi) {
-        List<JoueurClassement.ButeurInfo> first = new ArrayList<>();
-        List<JoueurClassement.ButeurInfo> second = new ArrayList<>();
-        List<JoueurClassement.ButeurInfo> third = new ArrayList<>();
+    private HorizontalLayout buildPodium(List<TournamentData.ButeurInfo> buteurs, boolean showTournoi) {
+        List<TournamentData.ButeurInfo> first = new ArrayList<>();
+        List<TournamentData.ButeurInfo> second = new ArrayList<>();
+        List<TournamentData.ButeurInfo> third = new ArrayList<>();
 
-        for (JoueurClassement.ButeurInfo b : buteurs) {
+        for (TournamentData.ButeurInfo b : buteurs) {
             switch (b.getPlace()) {
                 case 1 -> first.add(b);
                 case 2 -> second.add(b);
@@ -200,12 +200,12 @@ public class VueJoueursClassement extends VerticalLayout {
         return podium;
     }
 
-    private HorizontalLayout buildPodiumAll(List<JoueurClassement.ButeurInfoAllTournois> buteurs) {
-        List<JoueurClassement.ButeurInfoAllTournois> first = new ArrayList<>();
-        List<JoueurClassement.ButeurInfoAllTournois> second = new ArrayList<>();
-        List<JoueurClassement.ButeurInfoAllTournois> third = new ArrayList<>();
+    private HorizontalLayout buildPodiumAll(List<TournamentData.ButeurInfoAllTournois> buteurs) {
+        List<TournamentData.ButeurInfoAllTournois> first = new ArrayList<>();
+        List<TournamentData.ButeurInfoAllTournois> second = new ArrayList<>();
+        List<TournamentData.ButeurInfoAllTournois> third = new ArrayList<>();
 
-        for (JoueurClassement.ButeurInfoAllTournois b : buteurs) {
+        for (TournamentData.ButeurInfoAllTournois b : buteurs) {
             switch (b.getPlace()) {
                 case 1 -> first.add(b);
                 case 2 -> second.add(b);
@@ -227,7 +227,7 @@ public class VueJoueursClassement extends VerticalLayout {
         return podium;
     }
 
-    private VerticalLayout createPodiumColumn(String title, List<JoueurClassement.ButeurInfo> players, String color, String columnClass) {
+    private VerticalLayout createPodiumColumn(String title, List<TournamentData.ButeurInfo> players, String color, String columnClass) {
         VerticalLayout col = new VerticalLayout();
         col.setAlignItems(Alignment.CENTER);
         col.setSpacing(false);
@@ -248,7 +248,7 @@ public class VueJoueursClassement extends VerticalLayout {
             empty.addClassName("podium-player-empty");
             box.add(empty);
         } else {
-            for (JoueurClassement.ButeurInfo player : players) {
+            for (TournamentData.ButeurInfo player : players) {
                 Span playerSpan = new Span(player.getNomJoueur());
                 playerSpan.addClassName("podium-player-name");
                 String tooltip = player.getNomEquipe() + " — " + player.getNombreButs() + " but" + (player.getNombreButs() > 1 ? "s" : "");
@@ -261,7 +261,7 @@ public class VueJoueursClassement extends VerticalLayout {
         return col;
     }
 
-    private VerticalLayout createPodiumColumnAll(String title, List<JoueurClassement.ButeurInfoAllTournois> players, String color, String columnClass) {
+    private VerticalLayout createPodiumColumnAll(String title, List<TournamentData.ButeurInfoAllTournois> players, String color, String columnClass) {
         VerticalLayout col = new VerticalLayout();
         col.setAlignItems(Alignment.CENTER);
         col.setSpacing(false);
@@ -282,7 +282,7 @@ public class VueJoueursClassement extends VerticalLayout {
             empty.addClassName("podium-player-empty");
             box.add(empty);
         } else {
-            for (JoueurClassement.ButeurInfoAllTournois player : players) {
+            for (TournamentData.ButeurInfoAllTournois player : players) {
                 Span playerSpan = new Span(player.getNomJoueur());
                 playerSpan.addClassName("podium-player-name");
                 String tooltip = player.getNomEquipe() + " — " + player.getNombreButs() + " but" + (player.getNombreButs() > 1 ? "s" : "") 
@@ -332,17 +332,17 @@ public class VueJoueursClassement extends VerticalLayout {
         contentLayout.add(gridAllTournois);
     }
 
-    private List<JoueurClassement.ButeurInfo> onlyScorers(List<JoueurClassement.ButeurInfo> src) {
-        List<JoueurClassement.ButeurInfo> out = new ArrayList<>();
-        for (JoueurClassement.ButeurInfo b : src) {
+    private List<TournamentData.ButeurInfo> onlyScorers(List<TournamentData.ButeurInfo> src) {
+        List<TournamentData.ButeurInfo> out = new ArrayList<>();
+        for (TournamentData.ButeurInfo b : src) {
             if (b.getNombreButs() > 0) out.add(b);
         }
         return out;
     }
 
-    private List<JoueurClassement.ButeurInfoAllTournois> onlyScorersAll(List<JoueurClassement.ButeurInfoAllTournois> src) {
-        List<JoueurClassement.ButeurInfoAllTournois> out = new ArrayList<>();
-        for (JoueurClassement.ButeurInfoAllTournois b : src) {
+    private List<TournamentData.ButeurInfoAllTournois> onlyScorersAll(List<TournamentData.ButeurInfoAllTournois> src) {
+        List<TournamentData.ButeurInfoAllTournois> out = new ArrayList<>();
+        for (TournamentData.ButeurInfoAllTournois b : src) {
             if (b.getNombreButs() > 0) out.add(b);
         }
         return out;
@@ -350,7 +350,7 @@ public class VueJoueursClassement extends VerticalLayout {
 
     private void updateLeaderboardCurrent() {
         leaderboardCurrentView.removeAll();
-        List<JoueurClassement.ButeurInfo> scorers = onlyScorers(currentButeursCache);
+        List<TournamentData.ButeurInfo> scorers = onlyScorers(currentButeursCache);
         leaderboardCurrentView.add(buildPodium(scorers, false));
         if (scorers.isEmpty()) {
             Paragraph p = new Paragraph("⚽ Aucun but marqué pour le moment.");
@@ -361,7 +361,7 @@ public class VueJoueursClassement extends VerticalLayout {
 
     private void updateLeaderboardAll() {
         leaderboardAllView.removeAll();
-        List<JoueurClassement.ButeurInfoAllTournois> scorers = onlyScorersAll(allButeursCache);
+        List<TournamentData.ButeurInfoAllTournois> scorers = onlyScorersAll(allButeursCache);
         leaderboardAllView.add(buildPodiumAll(scorers));
         if (scorers.isEmpty()) {
             Paragraph p = new Paragraph("⚽ Aucun but marqué pour le moment.");
