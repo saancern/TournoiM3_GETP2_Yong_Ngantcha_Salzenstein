@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+@Deprecated
 /*
     Méthodes utilitaires pour se connecter à divers SGBD.
     Méthode pour tenter de définir les clés primaire indépendemment du SGBD
@@ -26,12 +27,13 @@ public class ConnectionSimpleSGBD {
      *
      * @return
      */
+    @Deprecated
     public static Connection defaultCon() throws SQLException {
         return mysqlServeurPourM3();
 //        return h2InMemory("test");
 //        return h2InFile("bdd");
     }
-
+    @Deprecated
     public static Connection connectMySQL(String host, int port,
             String database, String user, String pass) throws SQLException {
         // ce test de la classe du driver n'est plus censée être indispensable
@@ -66,6 +68,7 @@ public class ConnectionSimpleSGBD {
      * @return
      * @throws SQLException
      */
+    @Deprecated
     public static Connection mysqlServeurPourM3() throws SQLException {
         return connectMySQL("92.222.25.165", 3306,
                 "m3_syong01",
@@ -93,6 +96,7 @@ public class ConnectionSimpleSGBD {
      * noms différents.
      * @return
      */
+    @Deprecated
     public static Connection h2InMemory(String name) throws SQLException {
         try {
             Class.forName("org.h2.Driver");
@@ -121,6 +125,7 @@ public class ConnectionSimpleSGBD {
      * créera un dossier "bdd" dans le répertoire principal du projet.
      * @return
      */
+    @Deprecated
     public static Connection h2InFile(String path) throws SQLException {
        try {
             Class.forName("org.h2.Driver");
@@ -164,6 +169,7 @@ public class ConnectionSimpleSGBD {
      * @return
      * @throws SQLException
      */
+    @Deprecated
     public static String sqlForGeneratedKeys(Connection con, String nomColonne) throws SQLException {
         String sgbdName = con.getMetaData().getDatabaseProductName();
         if (sgbdName.equals("MySQL")) {

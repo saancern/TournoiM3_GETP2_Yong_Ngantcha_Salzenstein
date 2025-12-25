@@ -186,7 +186,7 @@ public class VueParametres extends BaseLayout {
         try (Connection con = ConnectionPool.getConnection()) {
             // Charger le tournoi actuel depuis la session (ou ID=1 par défaut)
             Integer currentTournoiId = UserSession.getCurrentTournoiId().orElse(1);
-            parametreActuel = Parametre.getParametreParId(con, currentTournoiId);
+            parametreActuel = Parametre.getParametreById(con, currentTournoiId);
             
             if (parametreActuel != null) {
                 // Charger les valeurs dans l'interface
@@ -200,7 +200,7 @@ public class VueParametres extends BaseLayout {
                 
             } else {
                 // Si le tournoi actuel n'existe pas, fallback vers ID=1
-                parametreActuel = Parametre.getParametreParId(con, 1);
+                parametreActuel = Parametre.getParametreById(con, 1);
                 if (parametreActuel != null) {
                     // Charger les valeurs depuis le tournoi par défaut
                     nomTournoiField.setValue(parametreActuel.getNomTournoi());

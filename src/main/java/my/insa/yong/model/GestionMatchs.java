@@ -16,32 +16,6 @@ import java.util.Random;
 
 public class GestionMatchs {
 
-    // ------------- Tournament-Aware Table Names -------------
-    
-    /**
-     * Unified schema table names
-     * All tables now use a single schema with tournoi_id column for tournament isolation
-     * No longer creating per-tournament tables (equipe_2, joueur_2, etc.)
-     */
-        // All tables now use a single schema with tournoi_id column
-        /*static String getEquipeTable() { return "equipe"; }
-        static String getJoueurTable() { return "joueur"; }
-        static String getJoueurEquipeTable() { return "joueur_equipe"; }
-        static String getRencontreTable() { return "rencontre"; }
-        static String getButTable() { return "but"; }*/
-
-        // All CRUD operations below must use tournoi_id in WHERE, INSERT, UPDATE, DELETE queries
-        // Example for SELECT:
-        // "SELECT * FROM joueur WHERE tournoi_id = ?"
-        // Example for INSERT:
-        // "INSERT INTO joueur (prenom, nom, taille, age, sexe, tournoi_id) VALUES (?, ?, ?, ?, ?, ?)"
-        // Example for UPDATE:
-        // "UPDATE joueur SET ... WHERE id = ? AND tournoi_id = ?"
-        // Example for DELETE:
-        // "DELETE FROM joueur WHERE id = ? AND tournoi_id = ?"
-        // Similar changes for equipe, joueur_equipe, but, rencontre
-        // All joins must include tournoi_id in ON or WHERE clauses to ensure correct tournament context
-
     // ---------------- DTOs ----------------
     public static record MatchRow(
             int id, int round, Integer poolIndex,

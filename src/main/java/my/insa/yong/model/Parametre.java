@@ -171,27 +171,6 @@ public class Parametre extends ClasseMiroir {
         return null;
     }
     
-    /**
-     * Récupère un paramètre par son ID
-     */
-    public static Parametre getParametreParId(Connection con, int id) throws SQLException {
-        String sql = "SELECT id, nom_tournoi, sport, nombre_terrains, nombre_joueurs_par_equipe FROM tournoi WHERE id = ?";
-        try (PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setInt(1, id);
-            try (ResultSet rs = pst.executeQuery()) {
-                if (rs.next()) {
-                    return new Parametre(
-                        rs.getInt("id"),
-                        rs.getString("nom_tournoi"),
-                        rs.getString("sport"),
-                        rs.getInt("nombre_terrains"),
-                        rs.getInt("nombre_joueurs_par_equipe")
-                    );
-                }
-            }
-        }
-        return null;
-    }
     
     /**
      * Récupère tous les paramètres (tournois)
