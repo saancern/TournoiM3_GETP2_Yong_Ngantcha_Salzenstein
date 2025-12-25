@@ -1,8 +1,6 @@
 package my.insa.yong.webui;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,67 +15,24 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
 
+import my.insa.yong.model.EquipeClassement;
+import my.insa.yong.model.EquipeClassement.RankingInfoAllTournois;
 import my.insa.yong.model.UserSession;
 import my.insa.yong.utils.database.ConnectionPool;
 
 public class VueEquipesClassement extends VerticalLayout {
 
-    private Grid<EquipeInfo> gridCurrentTournoi;
-    private Grid<EquipeInfo> gridAllTournois;
-    private VerticalLayout contentLayout;
-    private VerticalLayout leaderboardCurrentView;
-    private VerticalLayout leaderboardAllView;
-    private Button btnViewAllCurrent;
-    private Button btnBackCurrent;
-    private Button btnViewAllAll;
-    private Button btnBackAll;
-    private List<EquipeInfo> currentEquipesCache = new ArrayList<>();
-    private List<EquipeInfo> allEquipesCache = new ArrayList<>();
-
-    public static class EquipeInfo {
-        private int place;
-        private String nomEquipe;
-        private int points;
-        private int victoires;
-        private int defaites;
-        private int matchsNuls;
-        private String nomTournoi;
-
-        public EquipeInfo(int place, String nomEquipe, int points, int victoires, int defaites, int matchsNuls) {
-            this.place = place;
-            this.nomEquipe = nomEquipe;
-            this.points = points;
-            this.victoires = victoires;
-            this.defaites = defaites;
-            this.matchsNuls = matchsNuls;
-        }
-
-        public EquipeInfo(int place, String nomEquipe, int points, int victoires, int defaites, int matchsNuls, String nomTournoi) {
-            this.place = place;
-            this.nomEquipe = nomEquipe;
-            this.points = points;
-            this.victoires = victoires;
-            this.defaites = defaites;
-            this.matchsNuls = matchsNuls;
-            this.nomTournoi = nomTournoi;
-        }
-
-        public int getPlace() { return place; }
-        public String getPlaceFormatted() {
-            return switch (place) {
-                case 1 -> "🥇 1er";
-                case 2 -> "🥈 2ème";
-                case 3 -> "🥉 3ème";
-                default -> String.valueOf(place);
-            };
-        }
-        public String getNomEquipe() { return nomEquipe; }
-        public int getPoints() { return points; }
-        public int getVictoires() { return victoires; }
-        public int getDefaites() { return defaites; }
-        public int getMatchsNuls() { return matchsNuls; }
-        public String getNomTournoi() { return nomTournoi; }
-    }
+    private final Grid<RankingInfoAllTournois> gridCurrentTournoi;
+    private final Grid<RankingInfoAllTournois> gridAllTournois;
+    private final VerticalLayout contentLayout;
+    private final VerticalLayout leaderboardCurrentView;
+    private final VerticalLayout leaderboardAllView;
+    private final Button btnViewAllCurrent;
+    private final Button btnBackCurrent;
+    private final Button btnViewAllAll;
+    private final Button btnBackAll;
+    private List<RankingInfoAllTournois> currentEquipesCache = new ArrayList<>();
+    private List<RankingInfoAllTournois> allEquipesCache = new ArrayList<>();
 
     public VueEquipesClassement() {
         setSizeFull();
@@ -143,20 +98,20 @@ public class VueEquipesClassement extends VerticalLayout {
     }
 
     @SuppressWarnings("deprecation")
-    private Grid<EquipeInfo> createGrid(boolean showTournoi) {
-        Grid<EquipeInfo> grid = new Grid<>(EquipeInfo.class, false);
+    private Grid<RankingInfoAllTournois> createGrid(boolean showTournoi) {
+        Grid<RankingInfoAllTournois> grid = new Grid<>(RankingInfoAllTournois.class, false);
         grid.setSizeFull();
         grid.setPageSize(20);
 
-        grid.addColumn(EquipeInfo::getPlaceFormatted).setHeader("Place").setWidth("100px").setFlexGrow(0);
-        grid.addColumn(EquipeInfo::getNomEquipe).setHeader("Équipe").setAutoWidth(true);
-        grid.addColumn(EquipeInfo::getPoints).setHeader("Points").setWidth("100px").setFlexGrow(0);
-        grid.addColumn(EquipeInfo::getVictoires).setHeader("V").setWidth("80px").setFlexGrow(0);
-        grid.addColumn(EquipeInfo::getMatchsNuls).setHeader("N").setWidth("80px").setFlexGrow(0);
-        grid.addColumn(EquipeInfo::getDefaites).setHeader("D").setWidth("80px").setFlexGrow(0);
+        grid.addColumn(RankingInfoAllTournois::getPlaceFormatted).setHeader("Place").setWidth("100px").setFlexGrow(0);
+        grid.addColumn(RankingInfoAllTournois::getNomEquipe).setHeader("Équipe").setAutoWidth(true);
+        grid.addColumn(RankingInfoAllTournois::getPoints).setHeader("Points").setWidth("100px").setFlexGrow(0);
+        grid.addColumn(RankingInfoAllTournois::getVictoires).setHeader("V").setWidth("80px").setFlexGrow(0);
+        grid.addColumn(RankingInfoAllTournois::getMatchsNuls).setHeader("N").setWidth("80px").setFlexGrow(0);
+        grid.addColumn(RankingInfoAllTournois::getDefaites).setHeader("D").setWidth("80px").setFlexGrow(0);
 
         if (showTournoi) {
-            grid.addColumn(EquipeInfo::getNomTournoi).setHeader("Tournoi").setAutoWidth(true);
+            grid.addColumn(RankingInfoAllTournois::getNomTournoi).setHeader("Tournoi").setAutoWidth(true);
         }
 
         grid.setClassNameGenerator(equipe -> {
@@ -170,101 +125,32 @@ public class VueEquipesClassement extends VerticalLayout {
     }
 
     private void loadEquipesCurrentTournoi() {
-        List<EquipeInfo> equipes = new ArrayList<>();
-        int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-
-        String sql = "SELECT e.id, e.nom_equipe, " +
-                     "SUM(CASE WHEN r.winner_id = e.id THEN 3 " +
-                     "         WHEN r.winner_id IS NOT NULL AND r.winner_id != e.id THEN 0 " +
-                     "         WHEN r.equipe1_id = e.id OR r.equipe2_id = e.id THEN 1 " +
-                     "         ELSE 0 END) as points, " +
-                     "SUM(CASE WHEN r.winner_id = e.id THEN 1 ELSE 0 END) as victoires, " +
-                     "SUM(CASE WHEN r.winner_id IS NOT NULL AND r.winner_id != e.id AND (r.equipe1_id = e.id OR r.equipe2_id = e.id) THEN 1 ELSE 0 END) as defaites, " +
-                     "SUM(CASE WHEN r.winner_id IS NULL AND (r.equipe1_id = e.id OR r.equipe2_id = e.id) THEN 1 ELSE 0 END) as matchsNuls " +
-                     "FROM equipe e " +
-                     "LEFT JOIN rencontre r ON (r.equipe1_id = e.id OR r.equipe2_id = e.id) AND r.tournoi_id = ? " +
-                     "WHERE e.tournoi_id = ? " +
-                     "GROUP BY e.id, e.nom_equipe " +
-                     "ORDER BY points DESC, victoires DESC, e.nom_equipe ASC";
-
-        try (Connection con = ConnectionPool.getConnection();
-             PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setInt(1, tournoiId);
-            pst.setInt(2, tournoiId);
-            ResultSet rs = pst.executeQuery();
-
-            int rank = 0;
-            Integer previousPoints = null;
-
-            while (rs.next()) {
-                int points = rs.getInt("points");
-                if (previousPoints == null || points != previousPoints) {
-                    rank++;
-                }
-                equipes.add(new EquipeInfo(rank, 
-                    rs.getString("nom_equipe"),
-                    points,
-                    rs.getInt("victoires"),
-                    rs.getInt("defaites"),
-                    rs.getInt("matchsNuls")));
-                previousPoints = points;
-            }
-        } catch (SQLException ex) {}
-
-        currentEquipesCache = equipes;
-        gridCurrentTournoi.setItems(equipes);
-        updateLeaderboardCurrent();
+        try (Connection con = ConnectionPool.getConnection()) {
+            int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
+            currentEquipesCache = EquipeClassement.chargerClassementTournoiActuelAvecPoints(con, tournoiId);
+            gridCurrentTournoi.setItems(currentEquipesCache);
+            updateLeaderboardCurrent();
+        } catch (SQLException ex) {
+            System.err.println("Erreur lors du chargement des équipes du tournoi actuel: " + ex.getMessage());
+        }
     }
 
     private void loadEquipesAllTournois() {
-        List<EquipeInfo> equipes = new ArrayList<>();
-        String sql = "SELECT e.id, e.nom_equipe, t.nom_tournoi, " +
-                     "SUM(CASE WHEN r.winner_id = e.id THEN 3 " +
-                     "         WHEN r.winner_id IS NOT NULL AND r.winner_id != e.id THEN 0 " +
-                     "         WHEN r.equipe1_id = e.id OR r.equipe2_id = e.id THEN 1 " +
-                     "         ELSE 0 END) as points, " +
-                     "SUM(CASE WHEN r.winner_id = e.id THEN 1 ELSE 0 END) as victoires, " +
-                     "SUM(CASE WHEN r.winner_id IS NOT NULL AND r.winner_id != e.id AND (r.equipe1_id = e.id OR r.equipe2_id = e.id) THEN 1 ELSE 0 END) as defaites, " +
-                     "SUM(CASE WHEN r.winner_id IS NULL AND (r.equipe1_id = e.id OR r.equipe2_id = e.id) THEN 1 ELSE 0 END) as matchsNuls " +
-                     "FROM equipe e " +
-                     "LEFT JOIN rencontre r ON (r.equipe1_id = e.id OR r.equipe2_id = e.id) " +
-                     "LEFT JOIN tournoi t ON e.tournoi_id = t.id " +
-                     "GROUP BY e.id, e.nom_equipe, t.nom_tournoi " +
-                     "ORDER BY points DESC, victoires DESC, e.nom_equipe ASC";
-
-        try (Connection con = ConnectionPool.getConnection();
-             PreparedStatement pst = con.prepareStatement(sql)) {
-            ResultSet rs = pst.executeQuery();
-            int rank = 0;
-            Integer previousPoints = null;
-
-            while (rs.next()) {
-                int points = rs.getInt("points");
-                if (previousPoints == null || points != previousPoints) {
-                    rank++;
-                }
-                equipes.add(new EquipeInfo(rank,
-                    rs.getString("nom_equipe"),
-                    points,
-                    rs.getInt("victoires"),
-                    rs.getInt("defaites"),
-                    rs.getInt("matchsNuls"),
-                    rs.getString("nom_tournoi") != null ? rs.getString("nom_tournoi") : "N/A"));
-                previousPoints = points;
-            }
-        } catch (SQLException ex) {}
-
-        allEquipesCache = equipes;
-        gridAllTournois.setItems(equipes);
-        updateLeaderboardAll();
+        try (Connection con = ConnectionPool.getConnection()) {
+            allEquipesCache = EquipeClassement.chargerClassementTousTournois(con);
+            gridAllTournois.setItems(allEquipesCache);
+            updateLeaderboardAll();
+        } catch (SQLException ex) {
+            System.err.println("Erreur lors du chargement des équipes de tous les tournois: " + ex.getMessage());
+        }
     }
 
-    private HorizontalLayout buildPodium(List<EquipeInfo> equipes, boolean showTournoi) {
-        List<EquipeInfo> first = new ArrayList<>();
-        List<EquipeInfo> second = new ArrayList<>();
-        List<EquipeInfo> third = new ArrayList<>();
+    private HorizontalLayout buildPodium(List<RankingInfoAllTournois> equipes, boolean showTournoi) {
+        List<RankingInfoAllTournois> first = new ArrayList<>();
+        List<RankingInfoAllTournois> second = new ArrayList<>();
+        List<RankingInfoAllTournois> third = new ArrayList<>();
 
-        for (EquipeInfo eq : equipes) {
+        for (RankingInfoAllTournois eq : equipes) {
             switch (eq.getPlace()) {
                 case 1 -> first.add(eq);
                 case 2 -> second.add(eq);
@@ -286,7 +172,7 @@ public class VueEquipesClassement extends VerticalLayout {
         return podium;
     }
 
-    private VerticalLayout createPodiumColumn(String title, List<EquipeInfo> teams, String color, String columnClass, boolean showTournoi) {
+    private VerticalLayout createPodiumColumn(String title, List<RankingInfoAllTournois> teams, String color, String columnClass, boolean showTournoi) {
         VerticalLayout col = new VerticalLayout();
         col.setAlignItems(Alignment.CENTER);
         col.setSpacing(false);
@@ -307,7 +193,7 @@ public class VueEquipesClassement extends VerticalLayout {
             empty.addClassName("podium-player-empty");
             box.add(empty);
         } else {
-            for (EquipeInfo team : teams) {
+            for (RankingInfoAllTournois team : teams) {
                 Span teamSpan = new Span(team.getNomEquipe());
                 teamSpan.addClassName("podium-player-name");
                 String tooltip = team.getPoints() + " pts — " + team.getVictoires() + "V " + team.getMatchsNuls() + "N " + team.getDefaites() + "D";
@@ -359,9 +245,9 @@ public class VueEquipesClassement extends VerticalLayout {
         contentLayout.add(gridAllTournois);
     }
 
-    private List<EquipeInfo> onlyWithPoints(List<EquipeInfo> src) {
-        List<EquipeInfo> out = new ArrayList<>();
-        for (EquipeInfo eq : src) {
+    private List<RankingInfoAllTournois> onlyWithPoints(List<RankingInfoAllTournois> src) {
+        List<RankingInfoAllTournois> out = new ArrayList<>();
+        for (RankingInfoAllTournois eq : src) {
             if (eq.getPoints() > 0 || eq.getVictoires() > 0 || eq.getMatchsNuls() > 0) {
                 out.add(eq);
             }
@@ -371,7 +257,7 @@ public class VueEquipesClassement extends VerticalLayout {
 
     private void updateLeaderboardCurrent() {
         leaderboardCurrentView.removeAll();
-        List<EquipeInfo> withPoints = onlyWithPoints(currentEquipesCache);
+        List<RankingInfoAllTournois> withPoints = onlyWithPoints(currentEquipesCache);
         leaderboardCurrentView.add(buildPodium(withPoints, false));
         if (withPoints.isEmpty()) {
             Paragraph p = new Paragraph("🏆 Aucun match joué pour le moment.");
@@ -382,7 +268,7 @@ public class VueEquipesClassement extends VerticalLayout {
 
     private void updateLeaderboardAll() {
         leaderboardAllView.removeAll();
-        List<EquipeInfo> withPoints = onlyWithPoints(allEquipesCache);
+        List<RankingInfoAllTournois> withPoints = onlyWithPoints(allEquipesCache);
         leaderboardAllView.add(buildPodium(withPoints, true));
         if (withPoints.isEmpty()) {
             Paragraph p = new Paragraph("🏆 Aucun match joué pour le moment.");
