@@ -13,16 +13,16 @@ import my.insa.yong.webui.components.BaseLayout;
 @Route(value = "classement", layout = BaseLayout.class)
 public class VueClassement extends VerticalLayout {
 
-    private Tabs mainTabs;
-    private Tab tabJoueurs;
-    private Tab tabEquipes;
-    private VerticalLayout mainContentLayout;
+    private final Tabs mainTabs;
+    private final Tab tabJoueurs;
+    private final Tab tabEquipes;
+    private final VerticalLayout mainContentLayout;
     
     // Pour la section Joueurs (copié de VueBut_alle)
-    private VueJoueursClassement vueJoueurs;
+    private final VueJoueursClassement vueJoueurs;
     
     // Pour la section Équipes
-    private VueEquipesClassement vueEquipes;
+    private final VueEquipesClassement vueEquipes;
 
     public VueClassement() {
         setSizeFull();

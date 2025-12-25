@@ -22,16 +22,16 @@ import my.insa.yong.webui.components.BaseLayout;
 @Route(value = "equipes-classement", layout = BaseLayout.class)
 public class VueEquipeClassement extends VerticalLayout {
 
-    private Grid<EquipeInfo> equipesGrid;
-    private Paragraph noDataMessage;
+    private final Grid<EquipeInfo> equipesGrid;
+    private final Paragraph noDataMessage;
 
     public static class EquipeInfo {
-        private int place;
-        private String nomEquipe;
-        private int victoires;
-        private int defaites;
-        private int matchsNuls;
-        private int buts;
+        private final int place;
+        private final String nomEquipe;
+        private final int victoires;
+        private final int defaites;
+        private final int matchsNuls;
+        private final int buts;
 
         public EquipeInfo(int place, String nomEquipe, int victoires, int defaites, int matchsNuls, int buts) {
             this.place = place;
@@ -80,7 +80,9 @@ public class VueEquipeClassement extends VerticalLayout {
         equipesGrid.addColumn(EquipeInfo::getDefaites).setHeader("Défaites").setAutoWidth(true);
         equipesGrid.addColumn(EquipeInfo::getButs).setHeader("Buts").setAutoWidth(true);
         equipesGrid.setSizeFull();
-        equipesGrid.setClassNameGenerator(equipe -> {
+        
+        // Appliquer les styles selon la place
+        equipesGrid.setPartNameGenerator(equipe -> {
             return switch (equipe.place) {
                 case 1 -> "gold-row";
                 case 2 -> "silver-row";
@@ -138,7 +140,7 @@ public class VueEquipeClassement extends VerticalLayout {
             equipesGrid.setItems(equipes);
             noDataMessage.setVisible(equipes.isEmpty());
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            System.err.println("Erreur lors du chargement des meilleures équipes: " + ex.getMessage());
             noDataMessage.setText("Erreur lors du chargement des données : " + ex.getMessage());
             noDataMessage.setVisible(true);
         }
