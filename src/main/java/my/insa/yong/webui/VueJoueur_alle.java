@@ -170,16 +170,13 @@ public class VueJoueur_alle extends VerticalLayout {
     }
 
     private int determinerColorIndex(String sexe) {
-        switch (sexe != null ? sexe.toUpperCase() : "INCONNU") {
-            case "H":
-            case "HOMME":
-                return 1; // Bleu
-            case "F":
-            case "FEMME":
-                return 2; // Rose/Rouge
-            default:
-                return 3; // Vert
-        }
+        return switch (sexe != null ? sexe.toUpperCase() : "INCONNU") {
+            case "H", "HOMME" -> 1;
+            case "F", "FEMME" -> 2;
+            default -> 3;
+        }; // Bleu
+        // Rose/Rouge
+        // Vert
     }
 
     private void ouvrirDetailJoueur(Joueur joueur) {
