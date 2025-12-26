@@ -11,6 +11,7 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.NumberField;
@@ -40,6 +41,8 @@ public class VueJoueur extends BaseLayout {
     private Grid<Joueur> joueursGrid;
     private H2 titreForm;
     private H2 titreTable;
+    private Button triButton;
+    private boolean triCroissant = true;
     
     private enum OperationMode {
         AJOUTER, MODIFIER, SUPPRIMER
@@ -163,7 +166,23 @@ public class VueJoueur extends BaseLayout {
         rightPanel.setSpacing(true);
         rightPanel.setPadding(true);
 
+        // Barre de titre avec bouton de tri
+        HorizontalLayout headerLayout = new HorizontalLayout();
+        headerLayout.setWidthFull();
+        headerLayout.setAlignItems(Alignment.CENTER);
+        
         titreTable.addClassName("page-title");
+        
+        triButton = new Button("↓ Z-A", e -> {
+            triCroissant = !triCroissant;
+            triButton.setText(triCroissant ? "↓ Z-A" : "↑ A-Z");
+            chargerJoueurs();
+        });
+        triButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        
+        headerLayout.add(titreTable);
+        headerLayout.expand(titreTable);
+        headerLayout.add(triButton);
 
         // Créer le tableau des joueurs
         joueursGrid = new Grid<>(Joueur.class, false);
@@ -178,7 +197,7 @@ public class VueJoueur extends BaseLayout {
         joueursGrid.setSizeFull();
         joueursGrid.addClassName("players-grid");
 
-        rightPanel.add(titreTable, joueursGrid);
+        rightPanel.add(headerLayout, joueursGrid);
 
         // Ajouter les panels au layout principal
         // Si utilisateur normal, le tableau prend toute la largeur
@@ -429,7 +448,9 @@ public class VueJoueur extends BaseLayout {
     private void chargerJoueurs() {
         try (Connection con = ConnectionPool.getConnection()) {
             int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
-            List<Joueur> joueurs = Joueur.chargerJoueursPourTournoi(con, tournoiId);
+            String ordre = triCroissant ? "ASC" : "DESC";
+            String sortCriteria = "nom " + ordre + ", prenom " + ordre;
+            List<Joueur> joueurs = Joueur.chargerJoueursPourTournoi(con, tournoiId, sortCriteria);
             
             // Mettre à jour le tableau
             joueursGrid.setItems(joueurs);

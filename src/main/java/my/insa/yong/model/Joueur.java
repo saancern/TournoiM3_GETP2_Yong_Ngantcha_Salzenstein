@@ -153,17 +153,15 @@ public class Joueur extends ClasseMiroir {
 
     /**
      * Charge tous les joueurs pour le tournoi courant avec tri personnalisé
+     * @param sortCriteria Clause ORDER BY SQL (ex: "nom ASC, prenom DESC")
      */
-    public static List<Joueur> chargerJoueursPourTournoi(Connection con, int tournoiId, String sortBy) throws SQLException {
+    public static List<Joueur> chargerJoueursPourTournoi(Connection con, int tournoiId, String sortCriteria) throws SQLException {
         List<Joueur> joueurs = new ArrayList<>();
         
-        String orderByClause = switch (sortBy) {
-            case "Prénom" -> "ORDER BY prenom, nom";
-            case "Âge" -> "ORDER BY age DESC, nom";
-            case "Taille" -> "ORDER BY taille DESC, nom";
-            case "Sexe" -> "ORDER BY sexe, nom, prenom";
-            default -> "ORDER BY nom, prenom";
-        };
+        // Si sortCriteria est vide ou null, utiliser un tri par défaut
+        String orderByClause = (sortCriteria == null || sortCriteria.trim().isEmpty()) 
+            ? "ORDER BY nom, prenom" 
+            : "ORDER BY " + sortCriteria;
         
         String sql = "SELECT id, prenom, nom, age, sexe, taille FROM joueur WHERE tournoi_id=? " + orderByClause;
         try (PreparedStatement pst = con.prepareStatement(sql)) {

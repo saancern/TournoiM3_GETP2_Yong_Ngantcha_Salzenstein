@@ -34,13 +34,13 @@ import my.insa.yong.webui.components.BaseLayout;
 @AnonymousAllowed
 public class VueJoueur_alle extends VerticalLayout {
 
-    private final VerticalLayout avatarContainer;
+    private HorizontalLayout avatarContainer;
     private final List<Joueur> joueurs;
-    private static final int AVATARS_PER_ROW = 5; // Nombre d'avatars par ligne
+    private String currentSortBy = "Nom";
+    private String currentOrder = "A-Z";
 
     public VueJoueur_alle() {
         this.joueurs = new ArrayList<>();
-        this.avatarContainer = new VerticalLayout();
         
         initializeLayout();
         chargerJoueurs();
@@ -63,72 +63,105 @@ public class VueJoueur_alle extends VerticalLayout {
         infoTournoi.addClassName("avatar-gallery-info");
 
         // Container pour les avatars avec layout responsive (left to right, top to bottom)
+        avatarContainer = new HorizontalLayout();
+        avatarContainer.setWidthFull();
+        avatarContainer.setJustifyContentMode(FlexComponent.JustifyContentMode.START);
+        avatarContainer.setAlignItems(FlexComponent.Alignment.START);
+        avatarContainer.getStyle().set("flex-wrap", "wrap");
+        avatarContainer.getStyle().set("gap", "20px");
         avatarContainer.addClassName("avatar-grid");
         
-        // ComboBox pour le tri
+        // Layout horizontal pour les contrôles de tri
+        HorizontalLayout sortLayout = new HorizontalLayout();
+        sortLayout.setAlignItems(FlexComponent.Alignment.END);
+        sortLayout.setSpacing(true);
+        
+        // ComboBox pour le critère de tri
         ComboBox<String> sortComboBox = new ComboBox<>("Trier par:");
         sortComboBox.setItems("Nom", "Âge", "Taille", "Sexe", "Prénom");
         sortComboBox.setValue("Nom"); // Valeur par défaut
         sortComboBox.setWidth("200px");
+        sortComboBox.setAllowCustomValue(false);
+        sortComboBox.setAllowedCharPattern("^$"); // Pattern qui ne match rien = empêche la saisie
         
-        // Listener pour le changement de tri
+        // ComboBox pour l'ordre de tri
+        ComboBox<String> orderComboBox = new ComboBox<>("Ordre:");
+        orderComboBox.setItems("A-Z", "Z-A");
+        orderComboBox.setValue("A-Z"); // Valeur par défaut
+        orderComboBox.setWidth("150px");
+        orderComboBox.setAllowCustomValue(false);
+        orderComboBox.setAllowedCharPattern("^$"); // Pattern qui ne match rien = empêche la saisie
+        
+        // Listener pour le changement de critère de tri
         sortComboBox.addValueChangeListener(event -> {
             if (event.getValue() != null) {
-                chargerJoueurs(event.getValue());
+                currentSortBy = event.getValue();
+                chargerJoueurs(currentSortBy, currentOrder);
                 rafraichirAvatars();
             }
         });
         
-        add(titre, infoTournoi, sortComboBox, avatarContainer);
+        // Listener pour le changement d'ordre
+        orderComboBox.addValueChangeListener(event -> {
+            if (event.getValue() != null) {
+                currentOrder = event.getValue();
+                chargerJoueurs(currentSortBy, currentOrder);
+                rafraichirAvatars();
+            }
+        });
+        
+        sortLayout.add(sortComboBox, orderComboBox);
+        
+        add(titre, infoTournoi, sortLayout, avatarContainer);
     }
 
     private void chargerJoueurs() {
-        chargerJoueurs("Nom"); // Tri par défaut
+        chargerJoueurs(currentSortBy, currentOrder);
     }
     
-    private void chargerJoueurs(String sortBy) {
+    private void chargerJoueurs(String sortBy, String order) {
         joueurs.clear(); // Vider la liste avant de recharger
         
         int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
         try (Connection connection = ConnectionPool.getConnection()) {
-            joueurs.addAll(Joueur.chargerJoueursPourTournoi(connection, tournoiId, sortBy));
+            // Construire le critère de tri pour la méthode du modèle
+            String direction = order.equals("A-Z") ? "ASC" : "DESC";
+            String sortCriteria;
+            
+            switch (sortBy) {
+                case "Nom":
+                    // IMPORTANT: Dans la BDD, nom et prenom sont inversés !
+                    sortCriteria = "prenom " + direction + ", nom " + direction;
+                    break;
+                case "Prénom":
+                    // IMPORTANT: Dans la BDD, nom et prenom sont inversés !
+                    sortCriteria = "nom " + direction + ", prenom " + direction;
+                    break;
+                case "Âge":
+                    sortCriteria = "age " + direction + ", prenom ASC";
+                    break;
+                case "Taille":
+                    sortCriteria = "taille " + direction + ", prenom ASC";
+                    break;
+                case "Sexe":
+                    sortCriteria = "sexe " + direction + ", prenom ASC, nom ASC";
+                    break;
+                default:
+                    sortCriteria = "prenom " + direction + ", nom " + direction;
+                    break;
+            }
+            
+            joueurs.addAll(Joueur.chargerJoueursPourTournoi(connection, tournoiId, sortCriteria));
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
     private void creerAvatars() {
-        // Créer les lignes horizontales pour organiser les avatars de gauche à droite, de haut en bas
-        HorizontalLayout currentRow = new HorizontalLayout(); // Initialiser dès le début
-        currentRow.setWidthFull();
-        currentRow.setJustifyContentMode(FlexComponent.JustifyContentMode.START);
-        currentRow.setAlignItems(FlexComponent.Alignment.CENTER);
-        currentRow.setSpacing(true);
-        currentRow.getStyle().set("flex-wrap", "wrap");
-        currentRow.addClassName("avatar-row");
-        avatarContainer.add(currentRow);
-        
-        int compteur = 0;
-        
+        // Ajouter tous les avatars directement dans le container (de gauche à droite, puis ligne suivante)
         for (Joueur joueur : joueurs) {
-            // Créer une nouvelle ligne si on a atteint AVATARS_PER_ROW éléments
-            if (compteur > 0 && compteur % AVATARS_PER_ROW == 0) {
-                currentRow = new HorizontalLayout();
-                currentRow.setWidthFull();
-                currentRow.setJustifyContentMode(FlexComponent.JustifyContentMode.START);
-                currentRow.setAlignItems(FlexComponent.Alignment.CENTER);
-                currentRow.setSpacing(true);
-                currentRow.getStyle().set("flex-wrap", "wrap");
-                currentRow.addClassName("avatar-row");
-                
-                avatarContainer.add(currentRow);
-            }
-            
-            // Créer et ajouter l'avatar card
             VerticalLayout avatarCard = creerAvatarCard(joueur);
-            currentRow.add(avatarCard);
-            
-            compteur++;
+            avatarContainer.add(avatarCard);
         }
     }
 
