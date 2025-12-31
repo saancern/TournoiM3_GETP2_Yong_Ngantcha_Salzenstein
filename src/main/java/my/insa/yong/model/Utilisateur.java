@@ -19,6 +19,7 @@ public class Utilisateur {
     private String surnom;
     private String pass;
     private boolean isAdmin; // Privilèges administrateur
+    private Integer joueurId; // Lien vers joueur (null si non joueur)
     
     public Utilisateur() {
     }
@@ -27,6 +28,7 @@ public class Utilisateur {
         this.surnom = surnom;
         this.pass = pass;
         this.isAdmin = isAdmin;
+        this.joueurId = null;
     }
     
     public Utilisateur(int id, String surnom, String pass, boolean isAdmin) {
@@ -34,6 +36,15 @@ public class Utilisateur {
         this.surnom = surnom;
         this.pass = pass;
         this.isAdmin = isAdmin;
+        this.joueurId = null;
+    }
+    
+    public Utilisateur(int id, String surnom, String pass, boolean isAdmin, Integer joueurId) {
+        this.id = id;
+        this.surnom = surnom;
+        this.pass = pass;
+        this.isAdmin = isAdmin;
+        this.joueurId = joueurId;
     }
     
     // ============================================================================
@@ -72,12 +83,26 @@ public class Utilisateur {
         this.isAdmin = isAdmin;
     }
     
+    public Integer getJoueurId() {
+        return joueurId;
+    }
+    
+    public void setJoueurId(Integer joueurId) {
+        this.joueurId = joueurId;
+    }
+    
     /**
-     * Get user role as integer (0 = user, 1 = admin)
+     * Get user role as integer (0 = user, 1 = admin, 3 = joueur)
      * Compatible with SessionInfo pattern
      */
     public int getRole() {
-        return isAdmin ? 1 : 0;
+        if (isAdmin) {
+            return 1; // Admin
+        } else if (joueurId != null) {
+            return 3; // Joueur
+        } else {
+            return 2; // Utilisateur simple
+        }
     }
     
     @Override
@@ -144,28 +169,50 @@ public class Utilisateur {
             return new LoginResult(false, -1, "", false, "Username and password are required");
         }
 
+        // Try with joueur_id first, fallback to old schema if column doesn't exist
         String sql = "SELECT id, surnom, pass, isAdmin FROM utilisateur WHERE surnom = ?";
+        Integer joueurId = null;
+        
+        try (Connection con = ConnectionPool.getConnection()) {
+            // Check if joueur_id column exists
+            boolean hasJoueurIdColumn = false;
+            try (PreparedStatement checkPst = con.prepareStatement("SELECT joueur_id FROM utilisateur WHERE 1=0")) {
+                checkPst.executeQuery();
+                hasJoueurIdColumn = true;
+            } catch (SQLException e) {
+                // Column doesn't exist - use old schema
+            }
+            
+            if (hasJoueurIdColumn) {
+                sql = "SELECT id, surnom, pass, isAdmin, joueur_id FROM utilisateur WHERE surnom = ?";
+            }
+            
+            try (PreparedStatement pst = con.prepareStatement(sql)) {
+                pst.setString(1, username);
+                ResultSet rs = pst.executeQuery();
 
-        try (Connection con = ConnectionPool.getConnection();
-             PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setString(1, username);
-            ResultSet rs = pst.executeQuery();
-
-            if (rs.next()) {
-                String storedPassword = rs.getString("pass");
-                if (storedPassword != null && storedPassword.equals(password)) {
-                    return new LoginResult(
-                        true,
-                        rs.getInt("id"),
-                        rs.getString("surnom"),
-                        rs.getBoolean("isAdmin"),
-                        null
-                    );
+                if (rs.next()) {
+                    String storedPassword = rs.getString("pass");
+                    
+                    if (storedPassword.equals(password)) {
+                        int userId = rs.getInt("id");
+                        boolean isAdmin = rs.getBoolean("isAdmin");
+                        
+                        // Read joueur_id if column exists
+                        if (hasJoueurIdColumn) {
+                            joueurId = rs.getObject("joueur_id", Integer.class);
+                        }
+                        
+                        // Create full user object
+                        Utilisateur user = new Utilisateur(userId, username, password, isAdmin, joueurId);
+                        
+                        return new LoginResult(true, userId, username, isAdmin, null);
+                    } else {
+                        return new LoginResult(false, -1, "", false, "Invalid password");
+                    }
                 } else {
-                    return new LoginResult(false, -1, "", false, "Invalid password");
+                    return new LoginResult(false, -1, "", false, "User not found");
                 }
-            } else {
-                return new LoginResult(false, -1, "", false, "User not found");
             }
         } catch (SQLException e) {
             return new LoginResult(false, -1, "", false, "Database error: " + e.getMessage());
@@ -173,13 +220,15 @@ public class Utilisateur {
     }
 
     /**
-     * Register new user in database
+     * Register new user in database with auto-detection of joueur
      * @param username the new username
      * @param password the password
+     * @param prenom first name to search for joueur match
+     * @param nom last name to search for joueur match
      * @param isAdmin whether user has admin privileges
      * @return LoginResult containing registration status
      */
-    public static LoginResult registerUser(String username, String password, boolean isAdmin) {
+    public static LoginResult registerUser(String username, String password, String prenom, String nom, boolean isAdmin) {
         if (username == null || username.trim().isEmpty()) {
             return new LoginResult(false, -1, "", false, "Username cannot be empty");
         }
@@ -192,19 +241,39 @@ public class Utilisateur {
             return new LoginResult(false, -1, "", false, "User already exists");
         }
 
-        String insertSql = "INSERT INTO utilisateur (surnom, pass, isAdmin) VALUES (?, ?, ?)";
+        try (Connection con = ConnectionPool.getConnection()) {
+            // Search for matching joueur by prenom + nom
+            Integer joueurId = null;
+            if (prenom != null && !prenom.trim().isEmpty() && nom != null && !nom.trim().isEmpty()) {
+                String searchJoueurSql = "SELECT id FROM joueur WHERE LOWER(prenom) = LOWER(?) AND LOWER(nom) = LOWER(?) LIMIT 1";
+                try (PreparedStatement pst = con.prepareStatement(searchJoueurSql)) {
+                    pst.setString(1, prenom.trim());
+                    pst.setString(2, nom.trim());
+                    ResultSet rs = pst.executeQuery();
+                    if (rs.next()) {
+                        joueurId = rs.getInt("id");
+                    }
+                }
+            }
 
-        try (Connection con = ConnectionPool.getConnection();
-             PreparedStatement pst = con.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
-            pst.setString(1, username);
-            pst.setString(2, password);
-            pst.setBoolean(3, isAdmin);
-            pst.executeUpdate();
+            // Insert user with joueur_id if found
+            String insertSql = "INSERT INTO utilisateur (surnom, pass, isAdmin, joueur_id) VALUES (?, ?, ?, ?)";
+            try (PreparedStatement pst = con.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
+                pst.setString(1, username);
+                pst.setString(2, password);
+                pst.setBoolean(3, isAdmin);
+                if (joueurId != null) {
+                    pst.setInt(4, joueurId);
+                } else {
+                    pst.setNull(4, java.sql.Types.INTEGER);
+                }
+                pst.executeUpdate();
 
-            try (ResultSet generatedKeys = pst.getGeneratedKeys()) {
-                if (generatedKeys.next()) {
-                    int newId = generatedKeys.getInt(1);
-                    return new LoginResult(true, newId, username, isAdmin, null);
+                try (ResultSet generatedKeys = pst.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        int newId = generatedKeys.getInt(1);
+                        return new LoginResult(true, newId, username, isAdmin, null);
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -212,6 +281,13 @@ public class Utilisateur {
         }
 
         return new LoginResult(false, -1, "", false, "Registration failed");
+    }
+
+    /**
+     * Legacy registration method (for compatibility)
+     */
+    public static LoginResult registerUser(String username, String password, boolean isAdmin) {
+        return registerUser(username, password, null, null, isAdmin);
     }
 
     /**

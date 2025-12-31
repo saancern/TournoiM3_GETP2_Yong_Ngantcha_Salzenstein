@@ -14,6 +14,34 @@ import my.insa.yong.utils.database.ConnectionPool;
 public class GestionBdD {
 
     /**
+     * Drop all tables in H2 database (for clean restart)
+     * @param con
+     * @throws SQLException
+     */
+    private static void dropAllTablesH2(Connection con) throws SQLException {
+        // Disable referential integrity checks
+        try (Statement st = con.createStatement()) {
+            st.execute("SET REFERENTIAL_INTEGRITY FALSE");
+            
+            // Drop tables in reverse order
+            String[] tables = {"terrain_rencontre", "but", "terrain", "rencontre", 
+                             "joueur_equipe", "tournoi", "equipe", "joueur", "utilisateur"};
+            
+            for (String table : tables) {
+                try {
+                    st.execute("DROP TABLE IF EXISTS " + table);
+                    System.out.println("Table '" + table + "' supprimée.");
+                } catch (SQLException e) {
+                    // Ignore errors
+                }
+            }
+            
+            // Re-enable referential integrity
+            st.execute("SET REFERENTIAL_INTEGRITY TRUE");
+        }
+    }
+
+    /**
      * 
      * @param con
      * @throws SQLException
@@ -28,7 +56,8 @@ public class GestionBdD {
                 + ConnectionPool.sqlForGeneratedKeys(con, "id") + ","
                 + " surnom varchar(30) not null unique,"
                 + " pass varchar(20) not null,"
-                + " isAdmin boolean not null default false "
+                + " isAdmin boolean not null default false,"
+                + " joueur_id int"
                 + ") ",
 
             // Table joueur (ajout tournoi_id)
@@ -125,6 +154,9 @@ public class GestionBdD {
             "alter table joueur_equipe add constraint fk_joueur_equipe_tournoi "
                 + " foreign key (tournoi_id) references tournoi(id) on delete cascade",
 
+            "alter table utilisateur add constraint fk_utilisateur_joueur "
+                + " foreign key (joueur_id) references joueur(id) on delete set null",
+
             "alter table rencontre add constraint fk_rencontre_tournoi "
                 + " foreign key (tournoi_id) references tournoi(id) on delete cascade",
 
@@ -165,6 +197,7 @@ public class GestionBdD {
         String[] tableNames = {"utilisateur", "joueur", "equipe", "tournoi", "joueur_equipe", "rencontre", "but", "terrain", "terrain_rencontre"};
         String[] constraintNames = {"fk_joueur_tournoi", "fk_equipe_tournoi",
                                    "fk_joueur_equipe_joueur", "fk_joueur_equipe_equipe", "fk_joueur_equipe_tournoi",
+                                   "fk_utilisateur_joueur",
                                    "fk_rencontre_tournoi", "fk_rencontre_equipe_a", "fk_rencontre_equipe_b", 
                                    "fk_rencontre_winner", "fk_but_rencontre", "fk_but_equipe", "fk_but_joueur", "fk_but_tournoi",
                                    "fk_terrain_tournoi", "fk_terrain_rencontre_terrain", "fk_terrain_rencontre_rencontre", "fk_terrain_rencontre_tournoi"};
@@ -175,6 +208,14 @@ public class GestionBdD {
         int constraintCount = 0;
         
         try {
+            // Check if this is H2 database and drop tables for clean start BEFORE setAutoCommit
+            String dbUrl = con.getMetaData().getURL();
+            System.out.println("DEBUG: Database URL = " + dbUrl);
+            if (dbUrl != null && dbUrl.contains(":h2:mem:")) {
+                System.out.println("=== Base H2 détectée - Suppression des tables existantes ===");
+                dropAllTablesH2(con);
+            }
+            
             con.setAutoCommit(false);
             
             try (Statement st = con.createStatement()) {

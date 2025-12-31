@@ -136,6 +136,11 @@ public class BaseLayout extends AppLayout {
             nav.addItem(new SideNavItem("Joueurs", VueJoueur_alle.class));
         }
         
+        // Tableau de bord joueur pour role = 3
+        if (UserSession.joueurConnected()) {
+            nav.addItem(new SideNavItem("Tableau de Bord", "tableau-de-bord"));
+        }
+        
         nav.addItem(new SideNavItem("Équipes", VueEquipe.class));
         
         // Terrains réservés aux administrateurs
@@ -159,6 +164,9 @@ public class BaseLayout extends AppLayout {
         if (UserSession.adminConnected()) {
             roleInfo.setText("Mode Administrateur - Accès complet");
             roleInfo.addClassNames(LumoUtility.TextColor.WARNING);
+        } else if (UserSession.joueurConnected()) {
+            roleInfo.setText("Mode Joueur - Statistiques personnelles");
+            roleInfo.addClassNames(LumoUtility.TextColor.PRIMARY);
         } else {
             roleInfo.setText("Mode Utilisateur - Accès standard");
             roleInfo.addClassNames(LumoUtility.TextColor.SUCCESS);

@@ -2,6 +2,8 @@ package my.insa.yong.model;
 
 import java.io.Serializable;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Optional;
 
@@ -82,6 +84,26 @@ public class UserSession implements Serializable {
     }
     
     /**
+     * Check if a joueur is connected (role = 3)
+     */
+    public static boolean joueurConnected() {
+        Optional<Utilisateur> curUser = curUser();
+        if (curUser.isEmpty()) {
+            return false;
+        } else {
+            return curUser.get().getRole() == 3;
+        }
+    }
+    
+    /**
+     * Get current user's joueur_id (null if not a joueur)
+     */
+    public static Integer getCurrentJoueurId() {
+        Optional<Utilisateur> user = curUser();
+        return user.map(Utilisateur::getJoueurId).orElse(null);
+    }
+    
+    /**
      * Get current user ID
      */
     public static Integer getCurrentUserId() {
@@ -102,7 +124,12 @@ public class UserSession implements Serializable {
      */
     public static String getCurrentUserRoleDisplay() {
         if (userConnected()) {
-            return adminConnected() ? "Administrateur" : "Utilisateur";
+            int role = curUser().get().getRole();
+            return switch (role) {
+                case 1 -> "Administrateur";
+                case 3 -> "Joueur";
+                default -> "Utilisateur";
+            };
         }
         return "Invité";
     }
@@ -120,9 +147,27 @@ public class UserSession implements Serializable {
     }
     
     /**
-     * Set current user (for backward compatibility)
+     * Set current user (reloads from database to get joueur_id)
      */
     public static void setCurrentUser(int userId, String username, boolean isAdmin) {
+        // Reload user from database to get joueur_id
+        try (Connection con = ConnectionPool.getConnection()) {
+            String sql = "SELECT id, surnom, pass, isAdmin, joueur_id FROM utilisateur WHERE id = ?";
+            try (PreparedStatement pst = con.prepareStatement(sql)) {
+                pst.setInt(1, userId);
+                ResultSet rs = pst.executeQuery();
+                if (rs.next()) {
+                    Integer joueurId = rs.getObject("joueur_id", Integer.class);
+                    Utilisateur user = new Utilisateur(userId, username, "", isAdmin, joueurId);
+                    login(user);
+                    return;
+                }
+            }
+        } catch (SQLException e) {
+            // Fallback to basic user without joueur_id
+        }
+        
+        // Fallback if database load fails
         Utilisateur user = new Utilisateur(userId, username, "", isAdmin);
         login(user);
     }

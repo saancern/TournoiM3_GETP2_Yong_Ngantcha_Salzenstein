@@ -29,6 +29,8 @@ public class VueConnexion extends VerticalLayout {
 
     private TextField champSurnom;
     private PasswordField champMotDePasse;
+    private TextField champPrenom; // For joueur matching
+    private TextField champNom; // For joueur matching
     private Button boutonConnexion;
     private Button boutonInscription;
 
@@ -62,6 +64,17 @@ public class VueConnexion extends VerticalLayout {
         champMotDePasse.setRequiredIndicatorVisible(true);
         champMotDePasse.addClassName("form-field");
 
+        // Champs pour lier au joueur (visibles seulement à l'inscription)
+        champPrenom = new TextField("Prénom");
+        champPrenom.setPlaceholder("Votre prénom (optionnel pour joueurs)");
+        champPrenom.addClassName("form-field");
+        champPrenom.setVisible(false); // Hidden by default
+
+        champNom = new TextField("Nom");
+        champNom.setPlaceholder("Votre nom (optionnel pour joueurs)");
+        champNom.addClassName("form-field");
+        champNom.setVisible(false); // Hidden by default
+
         // Boutons
         boutonConnexion = new Button("Se connecter");
         boutonConnexion.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -83,14 +96,51 @@ public class VueConnexion extends VerticalLayout {
         formulaire.addClassName("form-container");
         formulaire.addClassName("fade-in");
 
-        formulaire.add(titre, sousTitre, champSurnom, champMotDePasse, layoutBoutons);
+        formulaire.add(titre, sousTitre, champSurnom, champMotDePasse, champPrenom, champNom, layoutBoutons);
 
         this.add(formulaire);
     }
 
     private void configurerEvenements() {
         boutonConnexion.addClickListener(e -> gererConnexion());
-        boutonInscription.addClickListener(e -> gererInscription());
+        boutonInscription.addClickListener(e -> {
+            // Show role selection dialog with 3 options
+            champPrenom.setVisible(true);
+            champNom.setVisible(true);
+            afficherDialogueRole();
+        });
+    }
+    
+    private void afficherDialogueRole() {
+        if (!validerChamps()) {
+            return;
+        }
+
+        ConfirmDialog roleDialog = new ConfirmDialog();
+        roleDialog.setHeader("Type de compte");
+        roleDialog.setText("Choisissez le type de compte à créer :");
+        roleDialog.setCancelable(true);
+        
+        // Bouton Admin
+        roleDialog.setConfirmText("Administrateur");
+        roleDialog.addConfirmListener(event -> {
+            creerUtilisateur(true, false);
+        });
+        
+        // Bouton Cancel pour Joueur
+        roleDialog.setCancelText("Joueur");
+        roleDialog.addCancelListener(event -> {
+            creerUtilisateur(false, true);
+        });
+        
+        // Bouton Reject pour Utilisateur
+        roleDialog.setRejectText("Utilisateur");
+        roleDialog.setRejectable(true);
+        roleDialog.addRejectListener(event -> {
+            creerUtilisateur(false, false);
+        });
+        
+        roleDialog.open();
     }
 
     private void gererConnexion() {
@@ -118,43 +168,35 @@ public class VueConnexion extends VerticalLayout {
         }
     }
 
-    private void gererInscription() {
-        if (!validerChamps()) {
-            return;
-        }
-
+    private void creerUtilisateur(boolean isAdmin, boolean requiresJoueur) {
         String surnom = champSurnom.getValue().trim();
         String motDePasse = champMotDePasse.getValue();
-
-        // Show admin privileges dialog
-        ConfirmDialog adminDialog = new ConfirmDialog();
-        adminDialog.setHeader("Privilèges administrateur");
-        adminDialog.setText("Voulez-vous avoir des privilèges d'administrateur ?");
-        adminDialog.setCancelable(true);
-        adminDialog.setConfirmText("Oui (Admin)");
-        adminDialog.setCancelText("Non (Utilisateur)");
-
-        adminDialog.addConfirmListener(event -> {
-            // User chose admin privileges
-            creerUtilisateur(surnom, motDePasse, true);
-        });
-
-        adminDialog.addCancelListener(event -> {
-            // User chose regular user
-            creerUtilisateur(surnom, motDePasse, false);
-        });
-
-        adminDialog.open();
-    }
-
-    private void creerUtilisateur(String surnom, String motDePasse, boolean isAdmin) {
-        LoginResult result = Utilisateur.registerUser(surnom, motDePasse, isAdmin);
+        String prenom = champPrenom.getValue() != null ? champPrenom.getValue().trim() : null;
+        String nom = champNom.getValue() != null ? champNom.getValue().trim() : null;
+        
+        // Si c'est un joueur, vérifier que prénom et nom sont remplis
+        if (requiresJoueur && (prenom == null || prenom.isEmpty() || nom == null || nom.isEmpty())) {
+            afficherNotificationErreur("Pour créer un compte joueur, vous devez renseigner votre prénom et nom (identiques à ceux dans la base de joueurs).");
+            return;
+        }
+        
+        LoginResult result = Utilisateur.registerUser(surnom, motDePasse, prenom, nom, isAdmin);
         
         if (result.isSuccess()) {
             // Set user session for automatic login
             UserSession.setCurrentUser(result.getUserId(), result.getUsername(), result.isAdmin());
             
             String roleMessage = result.isAdmin() ? " (Administrateur)" : " (Utilisateur)";
+            
+            // Check if user was linked to a joueur
+            Integer joueurId = UserSession.getCurrentJoueurId();
+            if (joueurId != null) {
+                roleMessage = " (Joueur - Profil lié ✓)";
+            } else if (requiresJoueur) {
+                afficherNotificationErreur("Aucun joueur trouvé avec le prénom '" + prenom + "' et le nom '" + nom + "'. Compte créé comme utilisateur simple.");
+                roleMessage = " (Utilisateur - Joueur non trouvé)";
+            }
+            
             afficherNotificationSucces("Inscription réussie ! Connexion automatique..." + roleMessage);
             viderChamps();
             
@@ -184,6 +226,10 @@ public class VueConnexion extends VerticalLayout {
     private void viderChamps() {
         champSurnom.clear();
         champMotDePasse.clear();
+        champPrenom.clear();
+        champNom.clear();
+        champPrenom.setVisible(false);
+        champNom.setVisible(false);
     }
 
     private void afficherNotificationSucces(String message) {
