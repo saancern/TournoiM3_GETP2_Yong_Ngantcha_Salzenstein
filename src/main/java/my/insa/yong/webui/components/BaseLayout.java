@@ -181,11 +181,12 @@ public class BaseLayout extends AppLayout {
     private void showTournamentSelectionDialog() {
         System.out.println("Opening tournament selection dialog...");
         
-        // Load available tournaments
-        List<Parametre> tournois = loadAvailableTournaments();
-        
-        if (tournois.isEmpty()) {
-            Notification.show("Aucun tournoi disponible", 3000, Notification.Position.MIDDLE);
+        try {
+            // Load available tournaments
+            List<Parametre> tournois = loadAvailableTournaments();
+            
+            if (tournois.isEmpty()) {
+                Notification.show("Aucun tournoi disponible", 3000, Notification.Position.MIDDLE);
             return;
         }
         
@@ -228,6 +229,11 @@ public class BaseLayout extends AppLayout {
         }
         
         selectionDialog.open();
+        } catch (Exception ex) {
+            System.err.println("Error in tournament selection: " + ex.getMessage());
+            ex.printStackTrace();
+            Notification.show("Erreur lors du changement de tournoi", 3000, Notification.Position.MIDDLE);
+        }
     }
     
     private Parametre getNextTournament(List<Parametre> tournois, Integer currentId) {
@@ -269,7 +275,12 @@ public class BaseLayout extends AppLayout {
             
         } catch (SQLException ex) {
             System.err.println("Error loading tournaments: " + ex.getMessage());
+            ex.printStackTrace();
             Notification.show("Erreur lors du chargement des tournois", 3000, Notification.Position.MIDDLE);
+            return new ArrayList<>();
+        } catch (Exception ex) {
+            System.err.println("Unexpected error loading tournaments: " + ex.getMessage());
+            ex.printStackTrace();
             return new ArrayList<>();
         }
     }

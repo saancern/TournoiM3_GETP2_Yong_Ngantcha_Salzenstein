@@ -641,4 +641,43 @@ public class Classement {
         }
         return new DashboardMatchInfo(0, 0, "À déterminer", "À déterminer", 0, 0, "-");
     }
+
+    /**
+     * Load all matches for tournament with scores and round numbers
+     */
+    public static List<DashboardMatchInfo> chargerTousLesMatchs(int tournoiId) throws SQLException {
+        List<DashboardMatchInfo> matches = new ArrayList<>();
+        String sql = "SELECT r.id, r.round_number, COALESCE(r.score_a, 0) as score_a, " +
+                     "COALESCE(r.score_b, 0) as score_b, " +
+                     "COALESCE(ea.nom_equipe, 'À déterminer') as equipe_a, " +
+                     "COALESCE(eb.nom_equipe, 'À déterminer') as equipe_b, " +
+                     "COALESCE(t.nom_terrain, '-') as nom_terrain " +
+                     "FROM rencontre r " +
+                     "LEFT JOIN equipe ea ON r.equipe_a_id = ea.id " +
+                     "LEFT JOIN equipe eb ON r.equipe_b_id = eb.id " +
+                     "LEFT JOIN terrain_rencontre tr ON r.id = tr.rencontre_id AND tr.tournoi_id = ? " +
+                     "LEFT JOIN terrain t ON tr.terrain_id = t.id " +
+                     "WHERE r.tournoi_id = ? " +
+                     "ORDER BY r.round_number ASC, r.id ASC";
+
+        try (Connection con = ConnectionPool.getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setInt(1, tournoiId);
+            pst.setInt(2, tournoiId);
+            ResultSet rs = pst.executeQuery();
+
+            while (rs.next()) {
+                matches.add(new DashboardMatchInfo(
+                    rs.getInt("id"),
+                    rs.getInt("round_number"),
+                    rs.getString("equipe_a"),
+                    rs.getString("equipe_b"),
+                    rs.getInt("score_a"),
+                    rs.getInt("score_b"),
+                    rs.getString("nom_terrain")
+                ));
+            }
+        }
+        return matches;
+    }
 }

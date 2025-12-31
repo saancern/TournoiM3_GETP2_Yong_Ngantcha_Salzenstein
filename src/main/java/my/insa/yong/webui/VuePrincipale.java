@@ -255,8 +255,10 @@ public class VuePrincipale extends BaseLayout {
         int tournoiId = UserSession.getCurrentTournoiId().orElse(1);
 
         try {
-            Classement.DashboardMatchInfo modelMatch = Classement.chargerDernierMatch(tournoiId);
-            ongoingMatches.add(convertToMatchInfo(modelMatch));
+            List<Classement.DashboardMatchInfo> matches = Classement.chargerTousLesMatchs(tournoiId);
+            for (Classement.DashboardMatchInfo match : matches) {
+                ongoingMatches.add(convertToMatchInfo(match));
+            }
         } catch (SQLException ex) {
             System.err.println("Erreur lors du chargement des matchs en cours: " + ex.getMessage());
         }
