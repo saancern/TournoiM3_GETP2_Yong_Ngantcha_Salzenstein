@@ -2,8 +2,13 @@ package my.insa.yong.webui;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import com.vaadin.flow.component.AttachEvent;
+import com.vaadin.flow.component.DetachEvent;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Div;
@@ -11,6 +16,8 @@ import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -18,131 +25,102 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouterLink;
+import com.vaadin.flow.shared.Registration;
 
 import my.insa.yong.model.Classement;
 import my.insa.yong.model.UserSession;
 import my.insa.yong.webui.components.BaseLayout;
 
-/**
- *
- * @author saancern
- */
 @Route(value = "")
 @PageTitle("Accueil")
 public class VuePrincipale extends BaseLayout {
 
+    // ===== Réglages faciles =====
+    private static final int POLL_INTERVAL_MS = 3000;
+    private static final int CAROUSEL_INTERVAL_MS = 8000;
+    private static final int MATCHES_PER_PAGE = 4; // 2x2
+    // ===========================
+
     private final List<MatchInfo> ongoingMatches = new ArrayList<>();
-    private int currentMatchIndex = 0;
-    private VerticalLayout liveMatchContainer;
-    private Span matchCounter;
-    private H1 titre;
+
+    // matchId -> [scoreA, scoreB]
+    private final Map<Integer, int[]> lastScoresByMatchId = new HashMap<>();
+    private boolean firstLoadDone = false;
+
+    private Registration pollRegistration;
+
+    // Carousel
+    private int currentPageIndex = 0;
+    private long lastCarouselSwitchMs = 0L;
+
+    // UI
+    private Div matchesGridContainer;
+    private Span pageIndicator;
 
     public VuePrincipale() {
-        // Wrapper avec gradient background pour centrer le contenu
         VerticalLayout wrapper = new VerticalLayout();
         wrapper.setSizeFull();
         wrapper.addClassName("app-container");
-        wrapper.setJustifyContentMode(VerticalLayout.JustifyContentMode.CENTER);
         wrapper.setDefaultHorizontalComponentAlignment(Alignment.CENTER);
-        
+
         if (UserSession.userConnected()) {
-            // Contenu pour utilisateur connecté avec matchs en direct
-            construireInterfaceAvecMatchsEnDirect(wrapper);
-            
-            // Ajouter mise à jour automatique toutes les 3 secondes (live update pour tous les utilisateurs)
-            getUI().ifPresent(ui -> {
-                ui.setPollInterval(3000);
-                // Rafraîchir les données de match à chaque cycle de polling
-                ui.addPollListener(e -> {
-                    chargerMatchsEnCours();
-                    afficherMatchCourant();
-                    mettAJourCounter();
-                });
-            });
+            wrapper.setJustifyContentMode(VerticalLayout.JustifyContentMode.START);
+            construireInterfaceConnecte(wrapper);
         } else {
-            // Contenu pour utilisateur non connecté
+            wrapper.setJustifyContentMode(VerticalLayout.JustifyContentMode.CENTER);
+
             VerticalLayout container = new VerticalLayout();
             container.addClassName("form-container");
             container.addClassName("form-container-large");
             container.addClassName("fade-in");
             container.setAlignItems(Alignment.CENTER);
             container.setSpacing(true);
+
             construireInterfaceUtilisateurNonConnecte(container);
             wrapper.add(container);
         }
-        
-        // Ajouter le wrapper dans le AppLayout
+
         this.setContent(wrapper);
     }
 
-    private void construireInterfaceAvecMatchsEnDirect(VerticalLayout wrapper) {
-        // Titre
-        titre = new H1("🏆 Tableau de Bord - Matchs en Direct");
+    @Override
+    protected void onAttach(AttachEvent attachEvent) {
+        super.onAttach(attachEvent);
+
+        if (!UserSession.userConnected()) return;
+
+        UI ui = attachEvent.getUI();
+
+        if (pollRegistration != null) {
+            pollRegistration.remove();
+            pollRegistration = null;
+        }
+
+        ui.setPollInterval(POLL_INTERVAL_MS);
+        pollRegistration = ui.addPollListener(e -> {
+            chargerEtMettreAJour(true);
+            gererCarousel();
+        });
+    }
+
+    @Override
+    protected void onDetach(DetachEvent detachEvent) {
+        super.onDetach(detachEvent);
+
+        if (pollRegistration != null) {
+            pollRegistration.remove();
+            pollRegistration = null;
+        }
+    }
+
+    private void construireInterfaceConnecte(VerticalLayout wrapper) {
+        H1 titre = new H1("🏆 Tableau de Bord - Matchs en Direct");
         titre.addClassName("page-title");
 
-        // Section des matchs en direct
-        VerticalLayout liveSection = new VerticalLayout();
-        liveSection.addClassName("live-matches-section");
-        liveSection.setWidth("100%");
-        liveSection.setMaxWidth("1200px");
-
-        // Container pour afficher le match courant
-        liveMatchContainer = new VerticalLayout();
-        liveMatchContainer.setSizeUndefined();
-        liveMatchContainer.setAlignItems(Alignment.CENTER);
-        liveMatchContainer.setSpacing(true);
-
-        // Charger les matchs en cours et afficher
-        chargerMatchsEnCours();
-        afficherMatchCourant();
-
-        // Navigation entre matchs
-        HorizontalLayout navigationLayout = new HorizontalLayout();
-        navigationLayout.setJustifyContentMode(JustifyContentMode.CENTER);
-        navigationLayout.setSpacing(true);
-        navigationLayout.setWidthFull();
-
-        Button btnPrevious = new Button("← Précédent");
-        btnPrevious.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        btnPrevious.addClickListener(e -> {
-            if (!ongoingMatches.isEmpty()) {
-                currentMatchIndex = (currentMatchIndex - 1 + ongoingMatches.size()) % ongoingMatches.size();
-                afficherMatchCourant();
-                mettAJourCounter();
-            }
-        });
-
-        matchCounter = new Span((currentMatchIndex + 1) + " / " + ongoingMatches.size());
-        matchCounter.addClassName("match-counter");
-
-        Button btnNext = new Button("Suivant →");
-        btnNext.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        btnNext.addClickListener(e -> {
-            if (!ongoingMatches.isEmpty()) {
-                currentMatchIndex = (currentMatchIndex + 1) % ongoingMatches.size();
-                afficherMatchCourant();
-                mettAJourCounter();
-            }
-        });
-
-        Button btnRefresh = new Button("🔄 Actualiser");
-        btnRefresh.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        btnRefresh.addClickListener(e -> {
-            chargerMatchsEnCours();
-            currentMatchIndex = 0;
-            afficherMatchCourant();
-            mettAJourCounter();
-        });
-
-        navigationLayout.add(btnPrevious, matchCounter, btnNext, btnRefresh);
-
-        liveSection.add(liveMatchContainer, navigationLayout);
-        wrapper.add(titre, liveSection);
-
-        // Informations utilisateur
         HorizontalLayout userInfoSection = new HorizontalLayout();
         userInfoSection.setWidthFull();
         userInfoSection.setJustifyContentMode(JustifyContentMode.CENTER);
+        userInfoSection.setAlignItems(Alignment.CENTER);
         userInfoSection.setSpacing(true);
 
         String username = UserSession.getCurrentUsername();
@@ -159,91 +137,205 @@ public class VuePrincipale extends BaseLayout {
         });
 
         userInfoSection.add(userInfo, boutonChangerUtilisateur);
-        wrapper.add(userInfoSection);
+
+        pageIndicator = new Span("");
+        pageIndicator.getStyle()
+                .set("margin-top", "8px")
+                .set("margin-bottom", "2px")
+                .set("font-size", "0.9em")
+                .set("opacity", "0.75");
+
+        // ✅ Grille 2 colonnes avec PLUS D’AIR
+        matchesGridContainer = new Div();
+        matchesGridContainer.getStyle()
+                .set("width", "100%")
+                .set("max-width", "1350px")
+                .set("margin", "10px auto 0 auto")
+                .set("padding", "10px 14px")          // <-- air autour
+                .set("display", "grid")
+                .set("grid-template-columns", "repeat(2, minmax(0, 1fr))")
+                .set("column-gap", "40px")            // <-- plus d’espace horizontal
+                .set("row-gap", "22px")               // <-- plus d’espace vertical
+                .set("align-items", "start");
+
+        // Chargement initial
+        chargerEtMettreAJour(false);
+        lastCarouselSwitchMs = System.currentTimeMillis();
+
+        wrapper.add(titre, userInfoSection, pageIndicator, matchesGridContainer);
     }
 
-    private void mettAJourCounter() {
-        if (matchCounter != null) {
-            matchCounter.setText((currentMatchIndex + 1) + " / " + ongoingMatches.size());
+    private void chargerEtMettreAJour(boolean notifyGoals) {
+        chargerMatchsEnCours();
+
+        if (notifyGoals && firstLoadDone) {
+            detecterButsEtNotifier();
+        }
+
+        int pageCount = getPageCount();
+        if (pageCount <= 0) pageCount = 1;
+        if (currentPageIndex >= pageCount) currentPageIndex = 0;
+
+        afficherPageCourante();
+        memoriserScoresActuels();
+
+        firstLoadDone = true;
+    }
+
+    private void gererCarousel() {
+        int pageCount = getPageCount();
+        if (pageCount <= 1) return;
+
+        long now = System.currentTimeMillis();
+        if (now - lastCarouselSwitchMs >= CAROUSEL_INTERVAL_MS) {
+            currentPageIndex = (currentPageIndex + 1) % pageCount;
+            lastCarouselSwitchMs = now;
+            afficherPageCourante();
         }
     }
 
-    private void afficherMatchCourant() {
-        liveMatchContainer.removeAll();
+    private int getPageCount() {
+        if (ongoingMatches.isEmpty()) return 1;
+        int total = ongoingMatches.size();
+        int size = Math.max(1, MATCHES_PER_PAGE);
+        return (total + size - 1) / size;
+    }
+
+    private void afficherPageCourante() {
+        if (matchesGridContainer == null) return;
+        matchesGridContainer.removeAll();
 
         if (ongoingMatches.isEmpty()) {
+            matchesGridContainer.add(creerCarteMatch(new MatchInfo(0, 0, "À déterminer", "À déterminer", 0, 0, "-")));
+            updatePageIndicator(1, 1);
             return;
         }
 
-        MatchInfo match = ongoingMatches.get(currentMatchIndex);
+        int total = ongoingMatches.size();
+        int size = Math.max(1, MATCHES_PER_PAGE);
 
-        // Titre du match
+        int pageCount = getPageCount();
+        int start = currentPageIndex * size;
+        int end = Math.min(start + size, total);
+
+        List<MatchInfo> sub = ongoingMatches.subList(start, end);
+        for (MatchInfo match : sub) {
+            matchesGridContainer.add(creerCarteMatch(match));
+        }
+
+        updatePageIndicator(currentPageIndex + 1, pageCount);
+    }
+
+    private void updatePageIndicator(int page, int totalPages) {
+        if (pageIndicator == null) return;
+        pageIndicator.setText("Page " + page + " / " + totalPages + "  •  Auto-défilement : " + (CAROUSEL_INTERVAL_MS / 1000) + "s");
+    }
+
+    private Div creerCarteMatch(MatchInfo match) {
+        Div card = new Div();
+
+        // ✅ carte un peu plus “fine” + marge interne/respiration
+        card.getStyle()
+                .set("padding", "10px 14px")
+                .set("border-radius", "18px")
+                .set("background", "var(--lumo-base-color)")
+                .set("box-shadow", "var(--lumo-box-shadow-s)")
+                .set("width", "100%");
+
         H2 matchTitle = new H2("Match en Direct - Round " + match.roundNumber);
-        matchTitle.addClassName("match-title");
+        matchTitle.getStyle()
+                .set("margin", "4px 0 10px 0")
+                .set("font-size", "1.45rem")
+                .set("text-align", "center");
 
-        // Layout principal du match
         HorizontalLayout matchLayout = new HorizontalLayout();
         matchLayout.setWidthFull();
         matchLayout.setJustifyContentMode(JustifyContentMode.CENTER);
         matchLayout.setAlignItems(Alignment.CENTER);
         matchLayout.setSpacing(true);
-        matchLayout.addClassName("live-match-display");
 
-        // Équipe A
-        VerticalLayout teamALayout = creerLayoutEquipe(
-            match.teamAName, 
-            match.scoreA, 
-            true
-        );
+        VerticalLayout teamALayout = creerLayoutEquipe(match.teamAName, match.scoreA, true);
+        teamALayout.getStyle().set("flex", "1");
 
-        // VS avec score global
         Div vsSection = new Div();
-        vsSection.addClassName("vs-section");
-        H1 scoreDisplay = new H1(match.scoreA + " - " + match.scoreB);
-        scoreDisplay.addClassName("score-display");
-        Span vsText = new Span("VS");
-        vsText.addClassName("vs-text");
-        vsSection.add(vsText, scoreDisplay);
+        vsSection.getStyle()
+                .set("display", "flex")
+                .set("flex-direction", "column")
+                .set("align-items", "center")
+                .set("justify-content", "center")
+                .set("min-width", "46px");
 
-        // Équipe B
-        VerticalLayout teamBLayout = creerLayoutEquipe(
-            match.teamBName, 
-            match.scoreB, 
-            false
-        );
+        Span vsText = new Span("VS");
+        vsText.getStyle().set("opacity", "0.70").set("font-size", "0.95rem");
+
+        vsSection.add(vsText);
+
+        VerticalLayout teamBLayout = creerLayoutEquipe(match.teamBName, match.scoreB, false);
+        teamBLayout.getStyle().set("flex", "1");
 
         matchLayout.add(teamALayout, vsSection, teamBLayout);
 
-        // Informations du terrain
         Div terrainInfo = new Div();
-        terrainInfo.addClassName("terrain-info");
+        terrainInfo.getStyle()
+                .set("margin-top", "10px")
+                .set("display", "flex")
+                .set("justify-content", "center")
+                .set("gap", "8px");
+
         Span terrainLabel = new Span("📍 Terrain:");
-        terrainLabel.addClassName("terrain-label");
+        terrainLabel.getStyle().set("opacity", "0.8").set("font-weight", "600");
+
         Span terrainName = new Span(match.terrainName != null ? match.terrainName : "Non assigné");
-        terrainName.addClassName("terrain-name");
+        terrainName.getStyle().set("opacity", "0.9");
+
         terrainInfo.add(terrainLabel, terrainName);
 
-        liveMatchContainer.add(matchTitle, matchLayout, terrainInfo);
+        card.add(matchTitle, matchLayout, terrainInfo);
+        return card;
     }
 
     private VerticalLayout creerLayoutEquipe(String teamName, int score, boolean isTeamA) {
         VerticalLayout teamLayout = new VerticalLayout();
         teamLayout.setAlignItems(Alignment.CENTER);
         teamLayout.setSpacing(true);
-        teamLayout.addClassName("team-card");
+        teamLayout.setPadding(true);
+
+        // ✅ un peu plus compact
+        teamLayout.getStyle()
+                .set("background", "rgba(255,255,255,0.75)")
+                .set("border-radius", "14px")
+                .set("box-shadow", "var(--lumo-box-shadow-xs)")
+                .set("min-height", "135px")          // <-- réduit un peu
+                .set("justify-content", "center")
+                .set("padding", "12px");
+
         if (isTeamA) {
-            teamLayout.addClassName("team-card-a");
+            teamLayout.getStyle().set("border-left", "6px solid var(--lumo-primary-color)");
         } else {
-            teamLayout.addClassName("team-card-b");
+            teamLayout.getStyle().set("border-right", "6px solid #f59e0b");
         }
 
-        H2 teamNameSpan = new H2(teamName);
-        teamNameSpan.addClassName("team-name");
+        H2 teamNameSpan = new H2(teamName != null ? teamName : "À déterminer");
+        teamNameSpan.getStyle()
+                .set("margin", "0")
+                .set("font-size", "1.35rem")
+                .set("text-align", "center");
 
         Div scoreBox = new Div();
-        scoreBox.addClassName("score-box");
+        scoreBox.getStyle()
+                .set("padding", "12px 18px")
+                .set("border-radius", "14px")
+                .set("min-width", "86px")
+                .set("text-align", "center")
+                .set("background", "linear-gradient(135deg, rgba(99,102,241,0.95), rgba(124,58,237,0.95))");
+
         Span scoreSpan = new Span(String.valueOf(score));
-        scoreSpan.addClassName("team-score");
+        scoreSpan.getStyle()
+                .set("color", "white")
+                .set("font-size", "2.35rem")
+                .set("font-weight", "800")
+                .set("text-shadow", "0 1px 2px rgba(0,0,0,0.25)");
+
         scoreBox.add(scoreSpan);
 
         teamLayout.add(teamNameSpan, scoreBox);
@@ -263,56 +355,85 @@ public class VuePrincipale extends BaseLayout {
             System.err.println("Erreur lors du chargement des matchs en cours: " + ex.getMessage());
         }
 
-        // Ajouter un match par défaut si aucun match n'existe
         if (ongoingMatches.isEmpty()) {
             ongoingMatches.add(new MatchInfo(0, 0, "À déterminer", "À déterminer", 0, 0, "-"));
         }
-
-        currentMatchIndex = 0;
     }
 
     private MatchInfo convertToMatchInfo(Classement.DashboardMatchInfo modelMatch) {
         return new MatchInfo(
-            modelMatch.getId(),
-            modelMatch.getRoundNumber(),
-            modelMatch.getTeamAName(),
-            modelMatch.getTeamBName(),
-            modelMatch.getScoreA(),
-            modelMatch.getScoreB(),
-            modelMatch.getTerrainName()
+                modelMatch.getId(),
+                modelMatch.getRoundNumber(),
+                modelMatch.getTeamAName(),
+                modelMatch.getTeamBName(),
+                modelMatch.getScoreA(),
+                modelMatch.getScoreB(),
+                modelMatch.getTerrainName()
         );
     }
 
-// Classe interne pour stocker les informations d'un match
-private static class MatchInfo {
-    @SuppressWarnings("unused")
-    int id;
-    int roundNumber;
-    String teamAName;
-    String teamBName;
-    int scoreA;
-    int scoreB;
-    String terrainName;
+    private void detecterButsEtNotifier() {
+        for (MatchInfo m : ongoingMatches) {
+            if (m.id <= 0) continue;
 
-    MatchInfo(int matchId, int matchRound, String nameA, String nameB, int scoreTeamA, int scoreTeamB, String terrain) {
-        this.id = matchId;
-        this.roundNumber = matchRound;
-        this.teamAName = nameA;
-        this.teamBName = nameB;
-        this.scoreA = scoreTeamA;
-        this.scoreB = scoreTeamB;
-        this.terrainName = terrain;
+            int[] old = lastScoresByMatchId.get(m.id);
+            if (old == null) continue;
+
+            int deltaA = m.scoreA - old[0];
+            int deltaB = m.scoreB - old[1];
+
+            if (deltaA > 0) notifierBut(m.teamAName, deltaA, m);
+            if (deltaB > 0) notifierBut(m.teamBName, deltaB, m);
+        }
     }
-}
 
-private void construireInterfaceUtilisateurNonConnecte(VerticalLayout container) {
+    private void notifierBut(String equipe, int nbButs, MatchInfo m) {
+        String eq = (equipe == null || equipe.isBlank()) ? "Une équipe" : equipe;
+
+        String msg = (nbButs == 1)
+                ? "⚽ BUT pour " + eq + " ! (Round " + m.roundNumber + ") → " + m.scoreA + " - " + m.scoreB
+                : "⚽ " + nbButs + " buts pour " + eq + " ! (Round " + m.roundNumber + ") → " + m.scoreA + " - " + m.scoreB;
+
+        Notification n = Notification.show(msg, 2500, Notification.Position.TOP_END);
+        n.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+    }
+
+    private void memoriserScoresActuels() {
+        for (MatchInfo m : ongoingMatches) {
+            if (m.id <= 0) continue;
+            lastScoresByMatchId.put(m.id, new int[]{m.scoreA, m.scoreB});
+        }
+    }
+
+    private static class MatchInfo {
+        int id;
+        int roundNumber;
+        String teamAName;
+        String teamBName;
+        int scoreA;
+        int scoreB;
+        String terrainName;
+
+        MatchInfo(int matchId, int matchRound, String nameA, String nameB,
+                  int scoreTeamA, int scoreTeamB, String terrain) {
+            this.id = matchId;
+            this.roundNumber = matchRound;
+            this.teamAName = nameA;
+            this.teamBName = nameB;
+            this.scoreA = scoreTeamA;
+            this.scoreB = scoreTeamB;
+            this.terrainName = terrain;
+        }
+    }
+
+    private void construireInterfaceUtilisateurNonConnecte(VerticalLayout container) {
         H1 welcomeTitle = new H1("Bienvenue sur l'application de gestion de tournois !");
         welcomeTitle.addClassName("page-title");
 
         Paragraph description = new Paragraph(
-            "Gérez facilement vos tournois sportifs avec notre application intuitive. " +
-            "Connectez-vous pour accéder à vos matchs en direct, gérer les équipes, " +
-            "et bien plus encore."
+                "Gérez facilement vos tournois sportifs avec notre application intuitive. " +
+                        "Connectez-vous pour accéder à vos matchs en direct, gérer les équipes, " +
+                        "et bien plus encore."
         );
         description.addClassName("description-text");
 

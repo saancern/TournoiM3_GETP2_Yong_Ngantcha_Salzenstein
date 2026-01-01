@@ -27,6 +27,7 @@ import my.insa.yong.utils.database.ConnectionPool;
 import my.insa.yong.webui.VueClassement;
 import my.insa.yong.webui.VueConnexion;
 import my.insa.yong.webui.VueEquipe;
+import my.insa.yong.webui.VueEquipe_alle;
 import my.insa.yong.webui.VueJoueur;
 import my.insa.yong.webui.VueJoueur_alle;
 import my.insa.yong.webui.VueMatch;
@@ -141,14 +142,23 @@ public class BaseLayout extends AppLayout {
             nav.addItem(new SideNavItem("Tableau de Bord", "tableau-de-bord"));
         }
         
-        nav.addItem(new SideNavItem("Équipes", VueEquipe.class));
+        // Différents modes de vue équipes selon le rôle
+        if (UserSession.adminConnected()) {
+            nav.addItem(new SideNavItem("Équipes", VueEquipe.class));
+        } else {
+            nav.addItem(new SideNavItem("Équipes", VueEquipe_alle.class));
+        }
         
         // Terrains réservés aux administrateurs
         if (UserSession.adminConnected()) {
             nav.addItem(new SideNavItem("Terrains", VueTerrain.class));
         }
         
-        nav.addItem(new SideNavItem("Matchs", VueMatch.class));
+        // Matchs réservés aux administrateurs
+        if (UserSession.adminConnected()) {
+            nav.addItem(new SideNavItem("Matchs", VueMatch.class));
+        }
+        
         nav.addItem(new SideNavItem("Classement", VueClassement.class));
         
         // Paramètres réservés aux administrateurs

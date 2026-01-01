@@ -1,0 +1,217 @@
+@startuml
+allowmixing
+
+title Diagramme de classes - Système de Gestion de Tournois
+
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "Backend (Model / Métier)" {
+
+  class Utilisateur {
+    - id: int
+    - surnom: String
+    - pass: String
+    - isAdmin: boolean
+    --
+    + getId(): int
+    + getSurnom(): String
+    + isAdmin(): boolean
+    + getRole(): int
+  }
+
+  class UserSession {
+    - {static} curUser: Utilisateur
+    - {static} currentTournoiId: Integer
+    - {static} currentTournoiName: String
+    --
+    + {static} login(u: Utilisateur): void
+    + {static} logout(): void
+    + {static} userConnected(): boolean
+    + {static} getCurrentTournoiId(): Optional<Integer>
+    + {static} setCurrentTournoi(id: Integer, name: String): void
+  }
+
+  abstract class ClasseMiroir {
+    - id: int
+    --
+    + getId(): int
+    + setId(id: int): void
+    # saveSansId(c: Connection): Statement
+    + saveInDB(c: Connection): int
+    + loadFromDB(c: Connection, id: int): void
+  }
+
+  class Parametre {
+    - id: int
+    - nomTournoi: String
+    - sport: String
+    - nombreTerrains: int
+    - nombreJoueursParEquipe: int
+    --
+    + getId(): int
+    + getNomTournoi(): String
+    + getSport(): String
+    + saveInDB(c: Connection): int
+  }
+
+  class Joueur {
+    - prenom: String
+    - nom: String
+    - age: int
+    - sexe: String
+    - taille: double
+    --
+    + getPrenom(): String
+    + getNom(): String
+    + getAge(): int
+  }
+
+  class Equipe {
+    - nomEquipe: String
+    - dateCreation: LocalDate
+    - joueurs: List<Joueur>
+    --
+    + getNomEquipe(): String
+    + getJoueurs(): List<Joueur>
+    + addJoueur(j: Joueur): void
+  }
+
+  class Terrain {
+    - nomTerrain: String
+    - numero: int
+    --
+    + getNomTerrain(): String
+    + getNumero(): int
+    + toString(): String
+  }
+
+  class GestionMatchs {
+    - {static} MatchRow: record
+    - {static} ButeurRow: record
+    --
+    + {static} creerRencontres(): void
+    + {static} calculerScores(): void
+    + {static} getClassement(): List<ClassementRow>
+    + {static} enregistrerBut(): void
+  }
+
+  class ConnectionPool {
+    - {static} dataSource: HikariDataSource
+    - {static} dbUrl: String
+    --
+    + {static} init(): void
+    + {static} getConnection(): Connection
+    + {static} close(): void
+  }
+
+  ' Héritages (ClasseMiroir)
+  Parametre --|> ClasseMiroir
+  Joueur --|> ClasseMiroir
+  Equipe --|> ClasseMiroir
+  Terrain --|> ClasseMiroir
+
+  ' Containment / association
+  Equipe "1" o-- "0..*" Joueur : contient
+
+  ' Dépendances
+  UserSession ..> Utilisateur
+  GestionMatchs ..> Joueur
+  GestionMatchs ..> Equipe
+  GestionMatchs ..> Terrain
+}
+
+package "Frontend (Vaadin Views)" {
+
+  class AppLayout <<Vaadin>> { }
+
+  class BaseLayout {
+    - gridCurrentTournoi: Grid
+    - contentLayout: VerticalLayout
+    --
+    - createHeader(): void
+    - createDrawer(): void
+    - logout(): void
+    - switchTournament(): void
+  }
+
+  class VuePrincipale {
+    - container: VerticalLayout
+    --
+    + construireInterfaceConnectee(): void
+    + construireInterfaceNonConnectee(): void
+  }
+
+  class VueConnexion {
+    - tfUsername: TextField
+    - pfPassword: PasswordField
+    --
+    - gererConnexion(): void
+    - gererInscription(): void
+  }
+
+  class VueJoueur {
+    - grid: Grid<Joueur>
+    - dialogForm: Dialog
+    --
+    - chargerJoueurs(): void
+    - ajouterJoueur(): void
+    - supprimerJoueur(): void
+  }
+
+  class VueEquipe {
+    - grid: Grid<Equipe>
+    - joueursList: List<Joueur>
+    --
+    - chargerEquipes(): void
+    - associerJoueurs(): void
+  }
+
+  class VueMatch {
+    - gridRencontres: Grid
+    - gridScores: Grid
+    --
+    - chargerMatchs(): void
+    - enregistrerScore(): void
+  }
+
+  class VueBut_alle {
+    - gridCurrentTournoi: Grid
+    - gridAllTournois: Grid
+    --
+    - loadButeurs(): void
+    - buildPodium(): HorizontalLayout
+  }
+
+  ' Extensions
+  BaseLayout --|> AppLayout
+  VuePrincipale --|> BaseLayout
+  VueJoueur --|> BaseLayout
+  VueEquipe --|> BaseLayout
+  VueMatch --|> BaseLayout
+  VueBut_alle --|> BaseLayout
+
+  ' Dépendances "uses"
+  VueConnexion ..> Utilisateur
+  VueJoueur ..> Joueur
+  VueEquipe ..> Equipe
+  VueEquipe ..> Joueur
+  VueMatch ..> GestionMatchs
+}
+
+package "Database (Conceptuel)" {
+  database "Base de Données Relationnelle\nTables: utilisateur, parametre, joueur, equipe, terrain, rencontre, but" as DB
+}
+
+' Accès DB via ConnectionPool
+ConnectionPool ..> DB : SQL
+
+' Toutes les vues accèdent aux données via ConnectionPool
+VuePrincipale ..> ConnectionPool
+VueConnexion ..> ConnectionPool
+VueJoueur ..> ConnectionPool
+VueEquipe ..> ConnectionPool
+VueMatch ..> ConnectionPool
+VueBut_alle ..> ConnectionPool
+
+@enduml

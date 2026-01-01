@@ -109,6 +109,7 @@ public class VueConnexion extends VerticalLayout {
             champNom.setVisible(true);
             afficherDialogueRole();
         });
+        boutonConnexion.addClickShortcut(com.vaadin.flow.component.Key.ENTER);
     }
     
     private void afficherDialogueRole() {

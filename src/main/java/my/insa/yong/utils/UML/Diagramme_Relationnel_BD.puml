@@ -1,0 +1,120 @@
+@startuml
+title Schéma relationnel (ER) - Base de données Tournoi
+
+' Style
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+hide methods
+
+package "Base de données" {
+
+  class UTILISATEUR <<table>> {
+    {PK} id : INT
+    surnom : VARCHAR(30)
+    pass : VARCHAR(20)
+    isAdmin : BOOLEAN
+  }
+
+  class TOURNOI <<table>> {
+    {PK} id : INT
+    nom_tournoi : VARCHAR(255)
+    sport : VARCHAR(100)
+    nombre_terrains : INT
+    nombre_joueurs_par_equipe : INT
+  }
+
+  class JOUEUR <<table>> {
+    {PK} id : INT
+    prenom : VARCHAR(50)
+    nom : VARCHAR(50)
+    taille : DOUBLE
+    age : INT
+    sexe : CHAR(1)
+    {FK} tournoi_id : INT
+  }
+
+  class EQUIPE <<table>> {
+    {PK} id : INT
+    nom_equipe : VARCHAR(50)
+    date_creation : DATE
+    {FK} tournoi_id : INT
+  }
+
+  class TERRAIN <<table>> {
+    {PK} id : INT
+    nom_terrain : VARCHAR(100)
+    numero : INT
+    {FK} tournoi_id : INT
+  }
+
+  class RENCONTRE <<table>> {
+    {PK} id : INT
+    {FK} tournoi_id : INT
+    round_number : INT
+    pool_index : INT
+    {FK} equipe_a_id : INT
+    {FK} equipe_b_id : INT
+    score_a : INT
+    score_b : INT
+    {FK} winner_id : INT
+    played : BOOLEAN
+  }
+
+  class BUT <<table>> {
+    {PK} id : INT
+    {FK} rencontre_id : INT
+    {FK} equipe_id : INT
+    {FK} joueur_id : INT
+    minute : INT
+    {FK} tournoi_id : INT
+  }
+
+  class JOUEUR_EQUIPE <<junction>> {
+    {PK}{FK} joueur_id : INT
+    {PK}{FK} equipe_id : INT
+    {PK}{FK} tournoi_id : INT
+  }
+
+  class TERRAIN_RENCONTRE <<junction>> {
+    {PK}{FK} terrain_id : INT
+    {PK}{FK} rencontre_id : INT
+    {PK}{FK} tournoi_id : INT
+  }
+
+  ' =========================
+  ' Relations (FK / cardinalités)
+  ' =========================
+
+  ' TOURNOI 1:N (dépendances directes)
+  TOURNOI "1" -- "0..*" JOUEUR : possède\n(tournoi_id)
+  TOURNOI "1" -- "0..*" EQUIPE : organise\n(tournoi_id)
+  TOURNOI "1" -- "0..*" TERRAIN : dispose\n(tournoi_id)
+  TOURNOI "1" -- "0..*" RENCONTRE : planifie\n(tournoi_id)
+  TOURNOI "1" -- "0..*" BUT : enregistre\n(tournoi_id)
+
+  ' N:N JOUEUR <-> EQUIPE via JOUEUR_EQUIPE (+ iso tournoi)
+  JOUEUR  "1" -- "0..*" JOUEUR_EQUIPE : joueur_id
+  EQUIPE  "1" -- "0..*" JOUEUR_EQUIPE : equipe_id
+  TOURNOI "1" -- "0..*" JOUEUR_EQUIPE : tournoi_id
+
+  ' RENCONTRE (3 FK vers EQUIPE : A, B, winner)
+  EQUIPE "1" -- "0..*" RENCONTRE : equipe_a_id (A)
+  EQUIPE "1" -- "0..*" RENCONTRE : equipe_b_id (B)
+  EQUIPE "0..1" -- "0..*" RENCONTRE : winner_id (gagnante)
+
+  ' RENCONTRE 1:N BUT
+  RENCONTRE "1" -- "0..*" BUT : contient\n(rencontre_id)
+
+  ' EQUIPE 1:N BUT
+  EQUIPE "1" -- "0..*" BUT : marque\n(equipe_id)
+
+  ' JOUEUR 1:N BUT
+  JOUEUR "1" -- "0..*" BUT : inscrit\n(joueur_id)
+
+  ' N:N TERRAIN <-> RENCONTRE via TERRAIN_RENCONTRE (+ iso tournoi)
+  TERRAIN  "1" -- "0..*" TERRAIN_RENCONTRE : terrain_id
+  RENCONTRE "1" -- "0..*" TERRAIN_RENCONTRE : rencontre_id
+  TOURNOI   "1" -- "0..*" TERRAIN_RENCONTRE : tournoi_id
+}
+
+@enduml
