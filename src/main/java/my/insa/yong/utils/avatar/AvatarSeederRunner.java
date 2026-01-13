@@ -6,7 +6,7 @@ import my.insa.yong.utils.database.ConnectionPool;
 import my.insa.yong.model.UserSession; // optionnel si tu veux récupérer le tournoi courant
 
 public class AvatarSeederRunner {
-
+/* 
     public static void main(String[] args) {
         int tournoiId = 1; // <-- mets l'id du tournoi que tu veux remplir
         if (args.length >= 1) {
@@ -24,5 +24,5 @@ public class AvatarSeederRunner {
             e.printStackTrace();
             System.err.println("❌ Erreur : " + e.getMessage());
         }
-    }
+    }*/
 }
