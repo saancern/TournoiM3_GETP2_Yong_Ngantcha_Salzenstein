@@ -1297,3 +1297,26 @@ vaadin-tab[selected] {
     flex-wrap: wrap;
   }
 }
+/* Base navbar style (default) */
+.app-container::part(navbar) {
+  background: rgba(255, 255, 255, 0.94);
+  color: #2c3e50;
+}
+
+/* ADMIN — light slate blue */
+.app-container.role-admin::part(navbar) {
+  background: rgba(220, 228, 235, 0.95);
+  color: #2c3e50;
+}
+
+/* JOUEUR — soft pastel orange */
+.app-container.role-joueur::part(navbar) {
+  background: rgba(255, 230, 200, 0.95);
+  color: #7a3e00;
+}
+
+/* USER — soft pastel blue */
+.app-container.role-user::part(navbar) {
+  background: rgba(215, 235, 255, 0.95);
+  color: #1f3a5f;
+}

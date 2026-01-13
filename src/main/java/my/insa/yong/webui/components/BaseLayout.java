@@ -44,11 +44,29 @@ public class BaseLayout extends AppLayout {
     public BaseLayout() {
         // Ajouter la classe CSS pour le gradient background
         this.addClassName("app-container");
-        
+        applyRoleTheme();
         createHeader();
         createDrawer();
     }
-    
+private void applyRoleTheme() {
+    removeClassName("role-admin");
+    removeClassName("role-joueur");
+    removeClassName("role-user");
+
+    if (!UserSession.userConnected()) {
+        addClassName("role-user"); // default for guest
+        return;
+    }
+
+    if (UserSession.adminConnected()) {
+        addClassName("role-admin");
+    } else if (UserSession.joueurConnected()) {
+        addClassName("role-joueur");
+    } else {
+        addClassName("role-user");
+    }
+}
+
     private void createHeader() {
         System.out.println("Creating header...");
         String tournoiName = UserSession.getCurrentTournoiName();
